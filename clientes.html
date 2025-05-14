@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clientes - Gestão Lavagem de Placas</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/components-new.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__logo">🧼 Lavagem</div>
+    <nav class="sidebar__nav">
+      <a href="index.html">Dashboard</a>
+      <a href="clientes.html" class="active">Clientes</a>
+      <a href="vendas.html">Vendas</a>
+      <a href="recontato.html">Recontato</a>
+      <a href="despesas.html">Despesas</a>
+      <a href="relatorios.html">Relatórios</a>
+      <a href="#">Configurações</a>
+    </nav>
+  </aside>
+ 
+  <!-- Main content -->
+  <div class="main">
+    <!-- Header -->
+    <header class="header">
+      <div class="breadcrumb">Clientes</div>
+      <div class="header__actions">
+        <input type="text" placeholder="Buscar cliente..." class="header__search" id="clientSearch"/>
+        <button class="btn btn--primary" id="newClientBtn">Novo Cliente</button>
+      </div>
+    </header>
+ 
+    <!-- Body -->
+    <main class="content">
+      <section class="client-list">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>E-mail</th>
+                <th>Cidade</th>
+                <th>Último serviço</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="clientTableBody">
+              <!-- Preenchido via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="js/mockData.js"></script>
+<script src="js/modules/customers.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Iniciar módulo
+  window.CustomersModule.init();
+  
+  // Cache de elementos DOM
+  const clientTableBody = document.getElementById('clientTableBody');
+  const searchInput = document.getElementById('clientSearch');
+  const newClientBtn = document.getElementById('newClientBtn');
+  
+  // Função para renderizar a lista de clientes
+  function renderClientList(filterText = '') {
+    // Obter clientes filtrados
+    const clients = window.CustomersModule.searchCustomers(filterText);
+    
+    // Limpar tabela
+    clientTableBody.innerHTML = '';
+    
+    // Preencher com clientes
+    clients.forEach(client => {
+      // Encontrar último serviço
+      const services = window.mockDB.services
+        .filter(s => s.customerId === client.id)
+        .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
+      
+      const lastService = services.length ? 
+        new Date(services[0].serviceDate).toLocaleDateString('pt-BR') : 
+        'Nenhum';
+      
+      // Criar linha
+      const tr = document.createElement('tr');
+      
+      // Nome
+      const tdName = document.createElement('td');
+      tdName.textContent = client.name;
+      
+      // Telefone
+      const tdPhone = document.createElement('td');
+      tdPhone.textContent = client.phone;
+      
+      // E-mail
+      const tdEmail = document.createElement('td');
+      tdEmail.textContent = client.email || '-';
+      
+      // Cidade
+      const tdCity = document.createElement('td');
+      tdCity.textContent = `${client.city}/${client.state}`;
+      
+      // Último serviço
+      const tdLastService = document.createElement('td');
+      tdLastService.textContent = lastService;
+      
+      // Ações
+      const tdActions = document.createElement('td');
+      tdActions.className = 'actions';
+      
+      const btnView = document.createElement('button');
+      btnView.textContent = 'Ver';
+      btnView.className = 'btn btn--small';
+      btnView.addEventListener('click', () => window.CustomersModule.showCustomerDetails(client.id));
+      
+      const btnEdit = document.createElement('button');
+      btnEdit.textContent = 'Editar';
+      btnEdit.className = 'btn btn--small';
+      btnEdit.addEventListener('click', () => {
+        window.CustomersModule.editCustomer(client.id);
+        renderClientList(searchInput.value);
+      });
+      
+      const btnAddService = document.createElement('button');
+      btnAddService.textContent = 'Venda';
+      btnAddService.className = 'btn btn--small btn--primary';
+      btnAddService.addEventListener('click', () => {
+        // Redirecionar para página de vendas
+        // Por enquanto, usamos o módulo de serviços diretamente
+        if (window.ServicesModule) {
+          window.ServicesModule.addNewService();
+          renderClientList(searchInput.value);
+        } else {
+          alert('Módulo de vendas não disponível nesta página.');
+        }
+      });
+      
+      tdActions.appendChild(btnView);
+      tdActions.appendChild(btnEdit);
+      tdActions.appendChild(btnAddService);
+      
+      // Adicionar células à linha
+      tr.append(tdName, tdPhone, tdEmail, tdCity, tdLastService, tdActions);
+      
+      // Adicionar linha à tabela
+      clientTableBody.appendChild(tr);
+    });
+  }
+  
+  // Eventos
+  searchInput.addEventListener('input', e => {
+    renderClientList(e.target.value);
+  });
+  
+  newClientBtn.addEventListener('click', () => {
+    window.CustomersModule.showAddCustomerModal();
+  });
+  
+  // Inicialização
+  renderClientList();
+});
+</script>
+
+<script src="js/mockData.js"></script>
+<script src="js/modules/customers-new.js"></script>
+<script src="js/modules/services-new.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

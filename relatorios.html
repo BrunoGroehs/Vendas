@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatórios - Gestão Lavagem de Placas</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/components-new.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__logo">🧼 Lavagem</div>
+    <nav class="sidebar__nav">
+      <a href="index.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="vendas.html">Vendas</a>
+      <a href="recontato.html">Recontato</a>
+      <a href="despesas.html">Despesas</a>
+      <a href="relatorios.html" class="active">Relatórios</a>
+      <a href="#">Configurações</a>
+    </nav>
+  </aside>
+ 
+  <!-- Main content -->
+  <div class="main">
+    <!-- Header -->
+    <header class="header">
+      <div class="breadcrumb">Relatórios</div>
+      <div class="header__actions">
+        <button class="btn btn--primary" id="exportReportBtn">Exportar</button>
+      </div>
+    </header>
+ 
+    <!-- Body -->
+    <main class="content">
+      <!-- Date picker -->
+      <section class="date-range-picker">
+        <div class="form-group">
+          <label for="startDate">Data de início:</label>
+          <input type="date" id="startDate" class="form-control" value="2025-01-01">
+        </div>
+        <div class="form-group">
+          <label for="endDate">Data de fim:</label>
+          <input type="date" id="endDate" class="form-control" value="2025-12-31">
+        </div>
+        <button class="btn btn--primary" id="applyDateRangeBtn">Aplicar</button>
+      </section>
+
+      <!-- Tabs -->
+      <section class="report-tabs">
+        <div class="tabs">
+          <button class="tab-button active" data-tab="revenue">Receitas</button>
+          <button class="tab-button" data-tab="expenses">Despesas</button>
+          <button class="tab-button" data-tab="commissions">Comissões</button>
+          <button class="tab-button" data-tab="clients">Clientes</button>
+        </div>
+        
+        <div class="tab-content">
+          <!-- Receitas -->
+          <div class="tab-pane active" id="revenue-tab">
+            <div class="report-summary">
+              <div class="metric-tile">
+                <span class="metric-label">Receita Total</span>
+                <span class="metric-value" id="totalRevenue">R$ 0.00</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">Serviços</span>
+                <span class="metric-value" id="totalServices">0</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">Ticket Médio</span>
+                <span class="metric-value" id="averageTicket">R$ 0.00</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <h3>Receita por mês</h3>
+              <div class="chart__placeholder" id="revenueChart">
+                Gráfico de receitas seria implementado aqui (Chart.js)
+              </div>
+            </div>
+          </div>
+          
+          <!-- Despesas -->
+          <div class="tab-pane" id="expenses-tab">
+            <div class="report-summary">
+              <div class="metric-tile">
+                <span class="metric-label">Despesa Total</span>
+                <span class="metric-value" id="totalExpenses">R$ 0.00</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">Material</span>
+                <span class="metric-value" id="materialExpenses">R$ 0.00</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">Combustível</span>
+                <span class="metric-value" id="fuelExpenses">R$ 0.00</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <h3>Despesas por categoria</h3>
+              <div class="chart__placeholder" id="expenseChart">
+                Gráfico de despesas seria implementado aqui (Chart.js)
+              </div>
+            </div>
+          </div>
+          
+          <!-- Comissões -->
+          <div class="tab-pane" id="commissions-tab">
+            <div class="report-summary">
+              <div class="metric-tile">
+                <span class="metric-label">Total Comissões</span>
+                <span class="metric-value" id="totalCommissions">R$ 0.00</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">% da Receita</span>
+                <span class="metric-value" id="commissionPct">0%</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <h3>Comissões por mês</h3>
+              <div class="chart__placeholder" id="commissionChart">
+                Gráfico de comissões seria implementado aqui (Chart.js)
+              </div>
+            </div>
+          </div>
+          
+          <!-- Clientes -->
+          <div class="tab-pane" id="clients-tab">
+            <div class="report-summary">
+              <div class="metric-tile">
+                <span class="metric-label">Total Clientes</span>
+                <span class="metric-value" id="totalClients">0</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">Clientes Ativos</span>
+                <span class="metric-value" id="activeClients">0</span>
+              </div>
+              <div class="metric-tile">
+                <span class="metric-label">Valor Médio</span>
+                <span class="metric-value" id="avgClientValue">R$ 0.00</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <h3>Clientes por cidade</h3>
+              <div class="chart__placeholder" id="clientChart">
+                Gráfico de clientes seria implementado aqui (Chart.js)
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="js/mockData.js"></script>
+<script src="js/modules/services-new.js"></script>
+<script src="js/modules/customers-new.js"></script>
+<script src="js/modules/expenses-new.js"></script>
+<script src="js/modules/notifications-new.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Iniciar módulo
+  if (window.ExpensesModule) window.ExpensesModule.init();
+  
+  // Cache de elementos DOM
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  const applyDateRangeBtn = document.getElementById('applyDateRangeBtn');
+  const exportReportBtn = document.getElementById('exportReportBtn');
+  
+  // Tabs
+  const tabButtons = document.querySelectorAll('.tab-button');
+  const tabPanes = document.querySelectorAll('.tab-pane');
+
+  // Métricas
+  const totalRevenue = document.getElementById('totalRevenue');
+  const totalServices = document.getElementById('totalServices');
+  const averageTicket = document.getElementById('averageTicket');
+  
+  const totalExpenses = document.getElementById('totalExpenses');
+  const materialExpenses = document.getElementById('materialExpenses');
+  const fuelExpenses = document.getElementById('fuelExpenses');
+  
+  const totalCommissions = document.getElementById('totalCommissions');
+  const commissionPct = document.getElementById('commissionPct');
+  
+  const totalClients = document.getElementById('totalClients');
+  const activeClients = document.getElementById('activeClients');
+  const avgClientValue = document.getElementById('avgClientValue');
+  
+  // Gráficos placeholders
+  const revenueChart = document.getElementById('revenueChart');
+  const expenseChart = document.getElementById('expenseChart');
+  const commissionChart = document.getElementById('commissionChart');
+  const clientChart = document.getElementById('clientChart');
+
+  // Formatar moeda
+  const formatCurrency = value => `R$ ${value.toFixed(2)}`;
+  
+  // Alternar entre tabs
+  function switchTab(tabId) {
+    tabButtons.forEach(button => {
+      button.classList.remove('active');
+      if (button.dataset.tab === tabId) {
+        button.classList.add('active');
+      }
+    });
+    
+    tabPanes.forEach(pane => {
+      pane.classList.remove('active');
+      if (pane.id === `${tabId}-tab`) {
+        pane.classList.add('active');
+      }
+    });
+  }
+  
+  // Eventos de tabs
+  tabButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      switchTab(button.dataset.tab);
+    });
+  });
+  
+  // Função para gerar o relatório financeiro
+  function generateReport() {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    
+    if (!startDate || !endDate) {
+      alert('Por favor, selecione um intervalo de datas válido.');
+      return;
+    }
+    
+    // Usar módulo de despesas para gerar relatório
+    if (window.ExpensesModule) {
+      const report = window.ExpensesModule.generateFinancialReport(startDate, endDate);
+      
+      // Receitas
+      totalRevenue.textContent = formatCurrency(report.summary.revenue);
+      
+      // Contar serviços no período
+      const servicesInPeriod = window.mockDB.services.filter(s => {
+        const date = new Date(s.serviceDate);
+        return date >= new Date(startDate) && date <= new Date(endDate);
+      });
+      
+      totalServices.textContent = servicesInPeriod.length;
+      
+      const avgTicket = servicesInPeriod.length > 0 ? 
+        report.summary.revenue / servicesInPeriod.length : 0;
+        
+      averageTicket.textContent = formatCurrency(avgTicket);
+      
+      // Despesas
+      totalExpenses.textContent = formatCurrency(report.summary.expenses);
+      materialExpenses.textContent = formatCurrency(report.expensesByCategory.MATERIAL || 0);
+      fuelExpenses.textContent = formatCurrency(report.expensesByCategory.FUEL || 0);
+      
+      // Comissões
+      totalCommissions.textContent = formatCurrency(report.summary.commissions);
+      
+      const commissionPercentage = report.summary.revenue > 0 ? 
+        (report.summary.commissions / report.summary.revenue) * 100 : 0;
+        
+      commissionPct.textContent = `${commissionPercentage.toFixed(1)}%`;
+      
+      // Clientes
+      const clientsWithServiceInPeriod = new Set();
+      
+      servicesInPeriod.forEach(service => {
+        clientsWithServiceInPeriod.add(service.customerId);
+      });
+      
+      totalClients.textContent = window.mockDB.customers.length;
+      activeClients.textContent = clientsWithServiceInPeriod.size;
+      
+      const avgValue = clientsWithServiceInPeriod.size > 0 ?
+        report.summary.revenue / clientsWithServiceInPeriod.size : 0;
+        
+      avgClientValue.textContent = formatCurrency(avgValue);
+      
+      // Simulação de gráficos (seria substituído por Chart.js ou similar)
+      renderChartPlaceholders(report);
+    } else {
+      alert('Módulo de despesas não disponível.');
+    }
+  }
+  
+  // Renderiza placeholders para os gráficos
+  function renderChartPlaceholders(report) {
+    // Revenue chart
+    revenueChart.innerHTML = `
+      <div style="text-align: center; padding: 1rem;">
+        <p>Receita total: ${formatCurrency(report.summary.revenue)}</p>
+        <p>Lucro: ${formatCurrency(report.summary.profit)}</p>
+        <p style="color: #888; font-size: 0.9rem;">
+          (Este seria um gráfico de barras mostrando a receita mês a mês)
+        </p>
+      </div>
+    `;
+    
+    // Expense chart
+    let expenseCategoriesHtml = '';
+    for (const [category, amount] of Object.entries(report.expensesByCategory)) {
+      expenseCategoriesHtml += `<p>${category}: ${formatCurrency(amount)}</p>`;
+    }
+    
+    expenseChart.innerHTML = `
+      <div style="text-align: center; padding: 1rem;">
+        <p>Despesas totais: ${formatCurrency(report.summary.expenses)}</p>
+        ${expenseCategoriesHtml}
+        <p style="color: #888; font-size: 0.9rem;">
+          (Este seria um gráfico de pizza mostrando as despesas por categoria)
+        </p>
+      </div>
+    `;
+    
+    // Commission chart
+    commissionChart.innerHTML = `
+      <div style="text-align: center; padding: 1rem;">
+        <p>Comissões totais: ${formatCurrency(report.summary.commissions)}</p>
+        <p>Percentual médio: ${(report.summary.commissions / report.summary.revenue * 100).toFixed(1)}%</p>
+        <p style="color: #888; font-size: 0.9rem;">
+          (Este seria um gráfico de linha mostrando as comissões mês a mês)
+        </p>
+      </div>
+    `;
+    
+    // Client chart
+    const cities = {};
+    window.mockDB.customers.forEach(customer => {
+      if (!cities[customer.city]) {
+        cities[customer.city] = 0;
+      }
+      cities[customer.city]++;
+    });
+    
+    let citiesHtml = '';
+    for (const [city, count] of Object.entries(cities)) {
+      citiesHtml += `<p>${city}: ${count} clientes</p>`;
+    }
+    
+    clientChart.innerHTML = `
+      <div style="text-align: center; padding: 1rem;">
+        <p>Clientes totais: ${window.mockDB.customers.length}</p>
+        ${citiesHtml}
+        <p style="color: #888; font-size: 0.9rem;">
+          (Este seria um gráfico de barras horizontais mostrando clientes por cidade)
+        </p>
+      </div>
+    `;
+  }
+  
+  // Função para exportar o relatório (simulada)
+  function exportReport() {
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    
+    if (!startDate || !endDate) {
+      alert('Por favor, selecione um intervalo de datas válido.');
+      return;
+    }
+    
+    alert(`Relatório do período ${startDate} a ${endDate} exportado com sucesso!
+(Em uma implementação real, isso geraria um PDF ou CSV)`);
+  }
+  
+  // Eventos
+  applyDateRangeBtn.addEventListener('click', generateReport);
+  exportReportBtn.addEventListener('click', exportReport);
+  
+  // Inicialização
+  generateReport();
+});
+</script>
+</body>
+</html>

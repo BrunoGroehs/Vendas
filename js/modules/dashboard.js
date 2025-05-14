@@ -1,0 +1,522 @@
+// Dashboard module - Gerencia a página inicial com métricas e resumos
+const DashboardModule = (() => {
+  // Cache de elementos DOM
+  let metricTiles;
+  let contactsTableBody;
+  let chartContainer;
+  let newServiceButton;
+  const formatCurrency = (value) => `R$ ${value.toFixed(2)}`;
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('pt-BR');
+  };
+  // Inicialização do módulo
+  const init = () => {
+    metricTiles = {
+      customers: document.querySelector('.metric-tile:nth-child(1) .metric-value'),
+      services: document.querySelector('.metric-tile:nth-child(2) .metric-value'),
+      revenue: document.querySelector('.metric-tile:nth-child(3) .metric-value'),
+      expenses: document.querySelector('.metric-tile:nth-child(4) .metric-value'),
+      customersTrend: document.querySelector('.metric-tile:nth-child(1) .metric-trend'),
+      servicesTrend: document.querySelector('.metric-tile:nth-child(2) .metric-trend'),
+      revenueTrend: document.querySelector('.metric-tile:nth-child(3) .metric-trend'),
+      expensesTrend: document.querySelector('.metric-tile:nth-child(4) .metric-trend'),
+    };
+    contactsTableBody = document.querySelector('.table-mini tbody');
+    chartContainer = document.querySelector('.chart__placeholder');
+    newServiceButton = document.querySelector('.btn--primary');
+
+    // Badge de notificações no header
+    renderNotificationBadge();
+
+    // Adicionar event listeners
+    if (newServiceButton) {
+      newServiceButton.addEventListener('click', () => {
+        if (window.ServicesModule && window.ServicesModule.showNewServiceModal) {
+          window.ServicesModule.showNewServiceModal();
+        }
+      });
+    }
+
+    // Adicionar event listener para busca
+    const searchInput = document.querySelector('.header__search');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        renderContacts(e.target.value);
+      });
+    }
+
+    // Inicializa notificações (badge, toast, etc)
+    if (window.NotificationsModule && window.NotificationsModule.init) {
+      window.NotificationsModule.init();
+    }
+
+    renderMetrics();
+    renderContacts();
+    setupChart();
+  };
+
+  // Calcula e exibe métricas de dashboard
+  const renderMetrics = () => {
+    const db = window.mockDB;
+    
+    // Totais
+    const totalCustomers = db.customers.length;
+    const totalServices = db.services.length;
+    const totalRevenue = db.services.reduce((sum, s) => sum + s.price, 0);
+    const totalExpenses = db.expenses.reduce((sum, e) => sum + e.amount, 0);
+    
+    // Atualiza elementos
+    metricTiles.customers.textContent = totalCustomers;
+    metricTiles.services.textContent = totalServices;
+    metricTiles.revenue.textContent = formatCurrency(totalRevenue);
+    metricTiles.expenses.textContent = formatCurrency(totalExpenses);
+  };
+  // Exibe próximos contatos ordenados por data
+  const renderContacts = (filterText = '') => {
+    const db = window.mockDB;
+    const now = new Date();
+    
+    // Filtra e ordena agendamentos
+    const upcoming = db.appointments
+      .filter(a => a.status === 'PENDING')
+      .filter(a => {
+        const cust = db.customers.find(c => c.id === a.customerId);
+        return !filterText || (cust && cust.name.toLowerCase().includes(filterText.toLowerCase()));
+      })
+      .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))
+      .slice(0, 5); // Só os 5 mais próximos
+    
+    // Limpa tabela
+    contactsTableBody.innerHTML = '';
+    
+    // Cria linhas
+    upcoming.forEach(a => {
+      const cust = db.customers.find(c => c.id === a.customerId);
+      const tr = document.createElement('tr');
+      
+      const tdName = document.createElement('td');
+      tdName.textContent = cust ? cust.name : 'Cliente não encontrado';
+      tdName.style.cursor = 'pointer';
+      tdName.addEventListener('click', () => {
+        // Exibe detalhes do cliente em um modal
+        if (cust) {
+          showCustomerDetails(cust.id);
+        }
+      });
+      
+      const tdDate = document.createElement('td');
+      const scheduleDate = new Date(a.scheduledFor);
+      tdDate.textContent = scheduleDate.toLocaleDateString('pt-BR');
+      
+      // Destaca datas próximas (< 7 dias)
+      const daysUntil = Math.ceil((scheduleDate - now) / (1000 * 60 * 60 * 24));
+      if (daysUntil <= 7) {
+        tdDate.classList.add('warning-date');
+      }
+      
+      tr.append(tdName, tdDate);
+      tr.dataset.appointmentId = a.id;
+      tr.style.cursor = 'pointer';
+      tr.addEventListener('click', () => {
+        showAppointmentDetails(a.id);
+      });
+      
+      contactsTableBody.appendChild(tr);
+    });    // Mensagem se não houver contatos
+    if (upcoming.length === 0) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 2;
+      td.textContent = filterText ? 'Nenhum resultado para a busca' : 'Nenhum contato agendado';
+      td.style.textAlign = 'center';
+      tr.appendChild(td);
+      contactsTableBody.appendChild(tr);
+    }
+  };
+  
+  // Configura e renderiza o gráfico de receitas vs despesas
+  const setupChart = () => {
+    if (!chartContainer) return;
+    
+    const db = window.mockDB;
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const currentMonth = new Date().getMonth();
+    
+    // Organiza dados por mês
+    const revenueData = Array(6).fill(0);
+    const expenseData = Array(6).fill(0);
+    
+    // Últimos 6 meses
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    
+    // Receitas
+    db.services.forEach(service => {
+      const serviceDate = new Date(service.serviceDate);
+      if (serviceDate >= sixMonthsAgo) {
+        const monthIndex = (serviceDate.getMonth() - (currentMonth - 5) + 12) % 12;
+        if (monthIndex >= 0 && monthIndex < 6) {
+          revenueData[monthIndex] += service.price;
+        }
+      }
+    });
+    
+    // Despesas
+    db.expenses.forEach(expense => {
+      const expenseDate = new Date(expense.paidAt);
+      if (expenseDate >= sixMonthsAgo) {
+        const monthIndex = (expenseDate.getMonth() - (currentMonth - 5) + 12) % 12;
+        if (monthIndex >= 0 && monthIndex < 6) {
+          expenseData[monthIndex] += expense.amount;
+        }
+      }
+    });
+    
+    // Criar labels para os últimos 6 meses
+    const labels = [];
+    for (let i = 0; i < 6; i++) {
+      const monthIndex = (currentMonth - 5 + i + 12) % 12;
+      labels.push(months[monthIndex]);
+    }
+    
+    // Criar gráfico simples (sem bibliotecas externas)
+    const chartHtml = createSimpleChart(labels, revenueData, expenseData);
+    chartContainer.innerHTML = chartHtml;
+  };
+  
+  // Função que cria um gráfico simples com HTML/CSS
+  const createSimpleChart = (labels, revenueData, expenseData) => {
+    const maxValue = Math.max(...revenueData, ...expenseData) * 1.1; // 10% maior que o valor máximo
+    const chartHeight = 200;
+    
+    let html = `
+      <div class="simple-chart">
+        <div class="chart-title">Receita vs Despesa (últimos 6 meses)</div>
+        <div class="chart-container" style="height: ${chartHeight}px;">
+    `;
+    
+    // Barras
+    for (let i = 0; i < labels.length; i++) {
+      const revenueHeight = (revenueData[i] / maxValue) * chartHeight;
+      const expenseHeight = (expenseData[i] / maxValue) * chartHeight;
+      
+      html += `
+        <div class="chart-column">
+          <div class="chart-bar revenue" style="height: ${revenueHeight}px;" 
+               title="Receita: R$ ${revenueData[i].toFixed(2)}"></div>
+          <div class="chart-bar expense" style="height: ${expenseHeight}px;" 
+               title="Despesa: R$ ${expenseData[i].toFixed(2)}"></div>
+          <div class="chart-label">${labels[i]}</div>
+        </div>
+      `;
+    }
+    
+    html += `
+        </div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-color revenue"></span>Receita</span>
+          <span class="legend-item"><span class="legend-color expense"></span>Despesa</span>
+        </div>
+      </div>
+    `;
+    
+    return html;
+  };
+  
+  // Exibe modal com detalhes de cliente
+  const showCustomerDetails = (customerId) => {
+    const db = window.mockDB;
+    const customer = db.customers.find(c => c.id === customerId);
+    
+    if (!customer) return;
+    
+    // Filtrar serviços deste cliente
+    const customerServices = db.services.filter(s => s.customerId === customerId);
+    
+    // Criar modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    // Conteúdo do modal
+    modal.innerHTML = `
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Cliente: ${customer.name}</h2>
+          <button class="modal__close">&times;</button>
+        </div>
+        <div class="modal__body">
+          <div class="customer-details">
+            <div class="customer-info">
+              <p><strong>Telefone:</strong> ${customer.phone}</p>
+              <p><strong>Email:</strong> ${customer.email}</p>
+              <p><strong>Endereço:</strong> ${customer.address}</p>
+              <p><strong>Cidade:</strong> ${customer.city} - ${customer.state}</p>
+              <p><strong>CEP:</strong> ${customer.zip}</p>
+              <p><strong>Canal preferido:</strong> ${customer.preferredChannel}</p>
+            </div>
+            
+            <div class="customer-services">
+              <h3>Histórico de Serviços</h3>
+              ${customerServices.length > 0 
+                ? `<ul class="services-list">
+                    ${customerServices.map(service => `
+                      <li>
+                        <div class="service-date">${formatDate(service.serviceDate)}</div>
+                        <div class="service-price">R$ ${service.price.toFixed(2)}</div>
+                        <div class="service-notes">${service.notes}</div>
+                      </li>
+                    `).join('')}
+                   </ul>`
+                : '<p>Nenhum serviço registrado</p>'
+              }
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <button class="btn btn--primary" id="addServiceBtn">Registrar Novo Serviço</button>
+          <button class="btn" id="closeModalBtn">Fechar</button>
+        </div>
+      </div>
+    `;
+    
+    // Inserir modal no DOM
+    document.body.appendChild(modal);
+    
+    // Adicionar event listeners aos botões
+    modal.querySelector('.modal__close').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    modal.querySelector('#closeModalBtn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    modal.querySelector('#addServiceBtn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+      ServicesModule.showNewServiceModal(customer.id);
+    });
+    
+    // Fechar ao clicar fora do conteúdo
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  };
+  
+  // Exibe detalhes do agendamento
+  const showAppointmentDetails = (appointmentId) => {
+    const db = window.mockDB;
+    const appointment = db.appointments.find(a => a.id === appointmentId);
+    
+    if (!appointment) return;
+    
+    const customer = db.customers.find(c => c.id === appointment.customerId);
+    const originalService = db.services.find(s => s.id === appointment.createdFromServiceId);
+    
+    // Criar modal
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    // Conteúdo do modal
+    modal.innerHTML = `
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Detalhes do Agendamento</h2>
+          <button class="modal__close">&times;</button>
+        </div>
+        <div class="modal__body">
+          <p><strong>Cliente:</strong> ${customer ? customer.name : 'Cliente não encontrado'}</p>
+          <p><strong>Agendado para:</strong> ${formatDate(appointment.scheduledFor)}</p>
+          <p><strong>Status:</strong> ${appointment.status === 'PENDING' ? 'Pendente' : 'Concluído'}</p>
+          <p><strong>Observações:</strong> ${appointment.notes}</p>
+          ${originalService ? `<p><strong>Criado a partir do serviço de:</strong> ${formatDate(originalService.serviceDate)}</p>` : ''}
+        </div>
+        <div class="modal__footer">
+          ${appointment.status === 'PENDING' 
+            ? `<button class="btn btn--primary" id="markDoneBtn">Marcar como Concluído</button>
+               <button class="btn" id="rescheduleBtn">Reagendar</button>`
+            : ''
+          }
+          <button class="btn" id="closeModalBtn">Fechar</button>
+        </div>
+      </div>
+    `;
+    
+    // Inserir modal no DOM
+    document.body.appendChild(modal);
+    
+    // Adicionar event listeners aos botões
+    modal.querySelector('.modal__close').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    modal.querySelector('#closeModalBtn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    // Event listeners condicionais
+    if (appointment.status === 'PENDING') {
+      modal.querySelector('#markDoneBtn').addEventListener('click', () => {
+        markAppointmentAsDone(appointmentId);
+        document.body.removeChild(modal);
+      });
+      
+      modal.querySelector('#rescheduleBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        rescheduleAppointment(appointmentId);
+      });
+    }
+    
+    // Fechar ao clicar fora do conteúdo
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  };
+  
+  // Marca um agendamento como concluído
+  const markAppointmentAsDone = (appointmentId) => {
+    const db = window.mockDB;
+    const appointment = db.appointments.find(a => a.id === appointmentId);
+    
+    if (appointment) {
+      appointment.status = 'DONE';
+      showToast('Agendamento marcado como concluído');
+      renderContacts(); // Atualiza a lista
+    }
+  };
+  
+  // Reagenda um contato
+  const rescheduleAppointment = (appointmentId) => {
+    const db = window.mockDB;
+    const appointment = db.appointments.find(a => a.id === appointmentId);
+    
+    if (!appointment) return;
+    
+    // Criar modal de reagendamento
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    
+    // Conteúdo do modal
+    modal.innerHTML = `
+      <div class="modal__content">
+        <div class="modal__header">
+          <h2>Reagendar Contato</h2>
+          <button class="modal__close">&times;</button>
+        </div>
+        <div class="modal__body">
+          <p>Escolha a nova data de contato:</p>
+          <input type="date" id="newDate" class="form-input" min="${new Date().toISOString().split('T')[0]}">
+          <p><strong>Observações:</strong></p>
+          <textarea id="notes" class="form-textarea">${appointment.notes}</textarea>
+        </div>
+        <div class="modal__footer">
+          <button class="btn btn--primary" id="saveBtn">Salvar</button>
+          <button class="btn" id="cancelBtn">Cancelar</button>
+        </div>
+      </div>
+    `;
+    
+    // Inserir modal no DOM
+    document.body.appendChild(modal);
+    
+    // Adicionar event listeners
+    modal.querySelector('.modal__close').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    modal.querySelector('#cancelBtn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+    
+    modal.querySelector('#saveBtn').addEventListener('click', () => {
+      const newDate = modal.querySelector('#newDate').value;
+      const notes = modal.querySelector('#notes').value;
+      
+      if (!newDate) {
+        alert('Por favor, selecione uma data');
+        return;
+      }
+      
+      // Atualizar agendamento
+      appointment.scheduledFor = newDate;
+      appointment.notes = notes;
+      
+      showToast('Agendamento reagendado com sucesso');
+      renderContacts(); // Atualiza a lista
+      
+      document.body.removeChild(modal);
+    });
+    
+    // Fechar ao clicar fora
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  };
+  
+  // Handler para o botão "Nova venda"
+  const handleNewService = () => {
+    // Chama o método do módulo de serviços para exibir o modal de nova venda
+    ServicesModule.showNewServiceModal();
+  };
+    // Exibe uma mensagem toast
+  const showToast = (message, type = 'success') => {
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Animar entrada
+    setTimeout(() => {
+      toast.classList.add('show');
+    }, 10);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, 3000);
+  };
+
+  // Renderiza badge de notificações pendentes no header
+  const renderNotificationBadge = () => {
+    const header = document.querySelector('.header__actions');
+    if (!header) return;
+    let badge = document.querySelector('.notification-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'notification-badge';
+      badge.title = 'Notificações pendentes de recontato';
+      header.appendChild(badge);
+    }
+    // Busca quantidade de notificações pendentes
+    let pending = 0;
+    if (window.mockDB && window.mockDB.appointments) {
+      const today = new Date();
+      const ahead = window.mockDB.settings?.notificationDaysAhead || 7;
+      const limit = new Date();
+      limit.setDate(today.getDate() + ahead);
+      pending = window.mockDB.appointments.filter(a => a.status === 'PENDING' && new Date(a.scheduledFor) <= limit).length;
+    }
+    badge.textContent = pending > 0 ? pending : '';
+    badge.style.display = pending > 0 ? 'inline-block' : 'none';
+  };
+
+  // Expor métodos publicamente
+  return {
+    init,
+    renderMetrics,
+    renderContacts
+  };
+})();
+
+// Exporta o módulo
+window.DashboardModule = DashboardModule;

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Despesas - Gestão Lavagem de Placas</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/components-new.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__logo">🧼 Lavagem</div>
+    <nav class="sidebar__nav">
+      <a href="index.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="vendas.html">Vendas</a>
+      <a href="recontato.html">Recontato</a>
+      <a href="despesas.html" class="active">Despesas</a>
+      <a href="relatorios.html">Relatórios</a>
+      <a href="#">Configurações</a>
+    </nav>
+  </aside>
+ 
+  <!-- Main content -->
+  <div class="main">
+    <!-- Header -->
+    <header class="header">
+      <div class="breadcrumb">Despesas</div>
+      <div class="header__actions">
+        <input type="text" placeholder="Buscar despesa..." class="header__search" id="expenseSearch"/>
+        <button class="btn btn--primary" id="newExpenseBtn">Nova Despesa</button>
+      </div>
+    </header>
+ 
+    <!-- Body -->
+    <main class="content">
+      <section class="metrics">
+        <div class="metric-tile">
+          <span class="metric-label">Despesas Totais</span>
+          <span class="metric-value" id="totalExpenses">R$ 0.00</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Material</span>
+          <span class="metric-value" id="materialExpenses">R$ 0.00</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Combustível</span>
+          <span class="metric-value" id="fuelExpenses">R$ 0.00</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Outros</span>
+          <span class="metric-value" id="otherExpenses">R$ 0.00</span>
+        </div>
+      </section>
+
+      <section class="expense-list">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Valor</th>
+                <th>Funcionário</th>
+                <th>Descrição</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="expenseTableBody">
+              <!-- Preenchido via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="js/mockData.js"></script>
+<script src="js/modules/expenses-new.js"></script>
+<script src="js/modules/notifications-new.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Iniciar módulo
+  window.ExpensesModule.init();
+  
+  // Cache de elementos DOM
+  const expenseTableBody = document.getElementById('expenseTableBody');
+  const searchInput = document.getElementById('expenseSearch');
+  const newExpenseBtn = document.getElementById('newExpenseBtn');
+  
+  // Métricas
+  const totalExpensesEl = document.getElementById('totalExpenses');
+  const materialExpensesEl = document.getElementById('materialExpenses');
+  const fuelExpensesEl = document.getElementById('fuelExpenses');
+  const otherExpensesEl = document.getElementById('otherExpenses');
+
+  // Formatar moeda
+  const formatCurrency = value => `R$ ${value.toFixed(2)}`;
+
+  // Traduzir categorias
+  const categoryTranslations = {
+    'MATERIAL': 'Material',
+    'FUEL': 'Combustível',
+    'OTHER': 'Outros'
+  };
+  
+  // Função para renderizar métricas
+  function renderMetrics() {
+    const expenses = window.mockDB.expenses;
+    
+    // Calcular totais por categoria
+    const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const material = expenses.filter(e => e.category === 'MATERIAL').reduce((sum, e) => sum + e.amount, 0);
+    const fuel = expenses.filter(e => e.category === 'FUEL').reduce((sum, e) => sum + e.amount, 0);
+    const other = expenses.filter(e => e.category === 'OTHER').reduce((sum, e) => sum + e.amount, 0);
+    
+    // Atualizar elementos
+    totalExpensesEl.textContent = formatCurrency(total);
+    materialExpensesEl.textContent = formatCurrency(material);
+    fuelExpensesEl.textContent = formatCurrency(fuel);
+    otherExpensesEl.textContent = formatCurrency(other);
+  }
+  
+  // Função para renderizar lista de despesas
+  function renderExpenseList(searchText = '') {
+    // Filtrar despesas
+    const expenses = window.mockDB.expenses
+      .filter(expense => {
+        if (!searchText) return true;
+        
+        // Busca por categoria
+        if (expense.category.toLowerCase().includes(searchText.toLowerCase())) {
+          return true;
+        }
+        
+        // Busca por funcionário
+        const employee = window.mockDB.users.find(u => u.id === expense.employeeId);
+        if (employee && employee.name.toLowerCase().includes(searchText.toLowerCase())) {
+          return true;
+        }
+        
+        // Busca por descrição
+        if (expense.description.toLowerCase().includes(searchText.toLowerCase())) {
+          return true;
+        }
+        
+        // Busca por data
+        if (expense.paidAt.includes(searchText)) {
+          return true;
+        }
+        
+        // Busca por valor
+        if (expense.amount.toString().includes(searchText)) {
+          return true;
+        }
+        
+        return false;
+      })
+      .sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
+    
+    // Limpar tabela
+    expenseTableBody.innerHTML = '';
+    
+    // Preencher com despesas
+    expenses.forEach(expense => {
+      const employee = window.mockDB.users.find(u => u.id === expense.employeeId);
+      
+      // Criar linha
+      const tr = document.createElement('tr');
+      
+      // Data
+      const tdDate = document.createElement('td');
+      tdDate.textContent = new Date(expense.paidAt).toLocaleDateString('pt-BR');
+      
+      // Categoria
+      const tdCategory = document.createElement('td');
+      tdCategory.textContent = categoryTranslations[expense.category] || expense.category;
+      
+      // Valor
+      const tdAmount = document.createElement('td');
+      tdAmount.textContent = formatCurrency(expense.amount);
+      
+      // Funcionário
+      const tdEmployee = document.createElement('td');
+      tdEmployee.textContent = employee ? employee.name : 'Desconhecido';
+      
+      // Descrição
+      const tdDescription = document.createElement('td');
+      tdDescription.textContent = expense.description || '-';
+      
+      // Ações
+      const tdActions = document.createElement('td');
+      const viewBtn = document.createElement('button');
+      viewBtn.className = 'btn btn--small';
+      viewBtn.textContent = 'Ver';
+      viewBtn.addEventListener('click', () => {
+        alert(`
+          Despesa: ${tdCategory.textContent}
+          Valor: ${tdAmount.textContent}
+          Data: ${tdDate.textContent}
+          Funcionário: ${tdEmployee.textContent}
+          Descrição: ${tdDescription.textContent}
+        `);
+      });
+      
+      tdActions.appendChild(viewBtn);
+      
+      // Adicionar células à linha
+      tr.append(tdDate, tdCategory, tdAmount, tdEmployee, tdDescription, tdActions);
+      
+      // Adicionar linha à tabela
+      expenseTableBody.appendChild(tr);
+    });
+  }
+  
+  // Eventos
+  searchInput.addEventListener('input', e => {
+    renderExpenseList(e.target.value);
+  });
+  
+  newExpenseBtn.addEventListener('click', () => {
+    window.ExpensesModule.addExpense();
+    renderMetrics();
+    renderExpenseList();
+  });
+  
+  // Ouvir por alterações no módulo de despesas
+  document.addEventListener('expenseAdded', () => {
+    renderMetrics();
+    renderExpenseList();
+  });
+  
+  // Inicialização
+  renderMetrics();
+  renderExpenseList();
+});
+</script>
+</body>
+</html>

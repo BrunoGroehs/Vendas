@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vendas - Gestão Lavagem de Placas</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/components-new.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__logo">🧼 Lavagem</div>
+    <nav class="sidebar__nav">
+      <a href="index.html">Dashboard</a>
+      <a href="clientes.html">Clientes</a>
+      <a href="vendas.html" class="active">Vendas</a>
+      <a href="recontato.html">Recontato</a>
+      <a href="despesas.html">Despesas</a>
+      <a href="relatorios.html">Relatórios</a>
+      <a href="#">Configurações</a>
+    </nav>
+  </aside>
+ 
+  <!-- Main content -->
+  <div class="main">
+    <!-- Header -->
+    <header class="header">
+      <div class="breadcrumb">Vendas</div>
+      <div class="header__actions">
+        <input type="text" placeholder="Buscar venda..." class="header__search" id="salesSearch"/>
+        <button class="btn btn--primary" id="newSaleBtn">Nova Venda</button>
+      </div>
+    </header>
+ 
+    <!-- Body -->
+    <main class="content">
+      <section class="metrics">
+        <div class="metric-tile">
+          <span class="metric-label">Total Vendas</span>
+          <span class="metric-value" id="totalSales">0</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Receita Total</span>
+          <span class="metric-value" id="totalRevenue">R$ 0.00</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Ticket Médio</span>
+          <span class="metric-value" id="averageTicket">R$ 0.00</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Comissões</span>
+          <span class="metric-value" id="totalCommissions">R$ 0.00</span>
+        </div>
+      </section>
+
+      <section class="sales-list">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Cliente</th>
+                <th>Valor</th>
+                <th>Comissão</th>
+                <th>Próx. Contato</th>
+                <th>Notas</th>
+              </tr>
+            </thead>
+            <tbody id="salesTableBody">
+              <!-- Preenchido via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="js/mockData.js"></script>
+<script src="js/modules/services-new.js"></script>
+<script src="js/modules/customers-new.js"></script>
+<script src="js/modules/notifications-new.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Iniciar módulo
+  window.ServicesModule.init();
+  
+  // Cache de elementos DOM
+  const salesTableBody = document.getElementById('salesTableBody');
+  const searchInput = document.getElementById('salesSearch');
+  const newSaleBtn = document.getElementById('newSaleBtn');
+  
+  // Métricas
+  const totalSalesEl = document.getElementById('totalSales');
+  const totalRevenueEl = document.getElementById('totalRevenue');
+  const averageTicketEl = document.getElementById('averageTicket');
+  const totalCommissionsEl = document.getElementById('totalCommissions');
+
+  // Formatar moeda
+  const formatCurrency = value => `R$ ${value.toFixed(2)}`;
+  
+  // Função para calcular e exibir métricas
+  function renderMetrics() {
+    const services = window.mockDB.services;
+    const totalSales = services.length;
+    const totalRevenue = services.reduce((sum, s) => sum + s.price, 0);
+    const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+    const totalCommissions = services.reduce((sum, s) => sum + (s.price * s.commissionPct / 100), 0);
+    
+    // Atualizar elementos
+    totalSalesEl.textContent = totalSales;
+    totalRevenueEl.textContent = formatCurrency(totalRevenue);
+    averageTicketEl.textContent = formatCurrency(averageTicket);
+    totalCommissionsEl.textContent = formatCurrency(totalCommissions);
+  }
+  
+  // Função para renderizar a lista de vendas
+  function renderSalesList(searchText = '') {
+    // Filtrar vendas
+    const services = window.mockDB.services
+      .filter(service => {
+        if (!searchText) return true;
+        
+        // Busca pelo nome do cliente
+        const customer = window.mockDB.customers.find(c => c.id === service.customerId);
+        if (customer && customer.name.toLowerCase().includes(searchText.toLowerCase())) {
+          return true;
+        }
+        
+        // Busca pela data do serviço
+        if (service.serviceDate.includes(searchText)) {
+          return true;
+        }
+        
+        // Busca pelo valor
+        if (service.price.toString().includes(searchText)) {
+          return true;
+        }
+        
+        return false;
+      })
+      .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
+    
+    // Limpar tabela
+    salesTableBody.innerHTML = '';
+    
+    // Preencher com serviços
+    services.forEach(service => {
+      const customer = window.mockDB.customers.find(c => c.id === service.customerId);
+      
+      // Encontrar próximo agendamento
+      const nextAppointment = window.mockDB.appointments
+        .filter(a => a.createdFromServiceId === service.id && a.status === 'PENDING')
+        .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))[0];
+      
+      // Calcular comissão
+      const commission = service.price * (service.commissionPct / 100);
+      
+      // Criar linha
+      const tr = document.createElement('tr');
+      
+      // Data
+      const tdDate = document.createElement('td');
+      tdDate.textContent = new Date(service.serviceDate).toLocaleDateString('pt-BR');
+      
+      // Cliente
+      const tdCustomer = document.createElement('td');
+      tdCustomer.textContent = customer ? customer.name : 'Cliente não encontrado';
+      
+      // Valor
+      const tdPrice = document.createElement('td');
+      tdPrice.textContent = formatCurrency(service.price);
+      
+      // Comissão
+      const tdCommission = document.createElement('td');
+      tdCommission.textContent = formatCurrency(commission);
+      
+      // Próximo contato
+      const tdNextContact = document.createElement('td');
+      if (nextAppointment) {
+        tdNextContact.textContent = new Date(nextAppointment.scheduledFor).toLocaleDateString('pt-BR');
+      } else {
+        tdNextContact.textContent = 'Não agendado';
+      }
+      
+      // Notas
+      const tdNotes = document.createElement('td');
+      tdNotes.textContent = service.notes || '-';
+      
+      // Adicionar células à linha
+      tr.append(tdDate, tdCustomer, tdPrice, tdCommission, tdNextContact, tdNotes);
+      
+      // Adicionar linha à tabela
+      salesTableBody.appendChild(tr);
+    });
+  }
+  
+  // Eventos
+  searchInput.addEventListener('input', e => {
+    renderSalesList(e.target.value);
+  });
+  
+  newSaleBtn.addEventListener('click', () => {
+    window.ServicesModule.addNewService();
+    renderMetrics();
+    renderSalesList();
+  });
+  
+  // Ouvir por alterações no módulo de serviços
+  document.addEventListener('serviceAdded', () => {
+    renderMetrics();
+    renderSalesList();
+  });
+  
+  // Inicialização
+  renderMetrics();
+  renderSalesList();
+});
+</script>
+</body>
+</html>
