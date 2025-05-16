@@ -5,10 +5,13 @@ const NotificationsModule = (() => {
   let notificationsTable;
   let sendNotificationBtn;
   let upcomingNotifications;
-  
-  // Formatação de datas
+    // Formatação de datas
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
+    // Verifica se a data tem informação de hora (formato com T)
+    if (dateStr.includes('T')) {
+      return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+    }
     return date.toLocaleDateString('pt-BR');
   };
   
@@ -19,14 +22,22 @@ const NotificationsModule = (() => {
     if (isNotificationsPage) {
       notificationsTable = document.querySelector('.notifications-table tbody');
       upcomingNotifications = document.querySelector('.upcoming-notifications');
-      sendNotificationBtn = document.querySelector('.btn--send-notifications');
+      sendNotificationBtn = document.querySelector('#runNotificationBtn');
       
       if (sendNotificationBtn) {
         sendNotificationBtn.addEventListener('click', batchSendNotifications);
       }
       
-      renderNotificationsTable();
-      renderUpcomingNotifications();
+      // Renderizar kanban board
+      renderKanbanBoard();
+      
+      // Adicionar event listener para o campo de busca
+      const searchInput = document.getElementById('appointmentSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          renderKanbanBoard(e.target.value);
+        });
+      }
     }
     
     // Verificar notificações a enviar automaticamente
@@ -289,6 +300,122 @@ const NotificationsModule = (() => {
     
     // Atualizar contagem de notificações
     updateNotificationBadge(upcomingAppointments.length);
+  };
+  
+  // Renderiza quadro Kanban de recontatos
+  const renderKanbanBoard = (filterText = '') => {
+    const db = window.mockDB;
+    if (!db) return;
+    
+    const today = new Date();
+    
+    // Containers do Kanban
+    const overdueContainer = document.getElementById('overdueContainer');
+    const upcomingContainer = document.getElementById('upcomingContainer');
+    const futureContainer = document.getElementById('futureContainer');
+    
+    if (!overdueContainer || !upcomingContainer || !futureContainer) return;
+    
+    // Limpar containers
+    overdueContainer.innerHTML = '';
+    upcomingContainer.innerHTML = '';
+    futureContainer.innerHTML = '';
+    
+    // Filtrar agendamentos pendentes
+    let appointments = db.appointments.filter(a => a.status === 'PENDING');
+    
+    // Aplicar filtro de texto
+    if (filterText) {
+      const lowerFilter = filterText.toLowerCase();
+      appointments = appointments.filter(a => {
+        const customer = db.customers.find(c => c.id === a.customerId);
+        if (!customer) return false;
+        
+        return customer.name.toLowerCase().includes(lowerFilter) ||
+               customer.phone.toLowerCase().includes(lowerFilter) ||
+               customer.email?.toLowerCase().includes(lowerFilter) ||
+               a.notes?.toLowerCase().includes(lowerFilter);
+      });
+    }
+    
+    // Contadores
+    let overdueCount = 0;
+    let upcomingCount = 0;
+    let futureCount = 0;
+    
+    // Processar cada agendamento
+    appointments.forEach(appointment => {
+      const customer = db.customers.find(c => c.id === appointment.customerId);
+      if (!customer) return;
+      
+      const appointmentDate = new Date(appointment.scheduledFor);
+      const timeDiff = appointmentDate.getTime() - today.getTime();
+      const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      
+      // Criar card para o agendamento
+      const card = document.createElement('div');
+      card.className = 'kanban-card';
+      card.innerHTML = `
+        <div class="kanban-card-title">${customer.name}</div>
+        <div class="kanban-card-info">${customer.phone}</div>
+        <div class="kanban-card-date">${formatDate(appointment.scheduledFor)}</div>
+        <div class="kanban-card-actions">
+          <button class="btn btn--small btn--accent send-notif-btn" data-id="${appointment.id}">Notificar</button>
+          <button class="btn btn--small btn--details details-btn" data-id="${appointment.id}">Detalhes</button>
+        </div>
+      `;
+      
+      // Eventos dos botões
+      const sendBtn = card.querySelector('.send-notif-btn');
+      sendBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sendNotification(appointment.id);
+      });
+      
+      const detailsBtn = card.querySelector('.details-btn');
+      detailsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showAppointmentDetails(appointment.id);
+      });
+      
+      // Card clicável
+      card.addEventListener('click', () => {
+        showAppointmentDetails(appointment.id);
+      });
+      
+      // Adicionar ao container apropriado
+      if (daysDiff < 0) {
+        // Vencido
+        overdueContainer.appendChild(card);
+        overdueCount++;
+      } else if (daysDiff <= 7) {
+        // Próximos 7 dias
+        upcomingContainer.appendChild(card);
+        upcomingCount++;
+      } else {
+        // Futuro
+        futureContainer.appendChild(card);
+        futureCount++;
+      }
+    });
+    
+    // Mostrar mensagem se não houver agendamentos em cada seção
+    if (overdueCount === 0) {
+      overdueContainer.innerHTML = '<div class="empty-message">Nenhum agendamento vencido</div>';
+    }
+    
+    if (upcomingCount === 0) {
+      upcomingContainer.innerHTML = '<div class="empty-message">Nenhum agendamento nos próximos 7 dias</div>';
+    }
+    
+    if (futureCount === 0) {
+      futureContainer.innerHTML = '<div class="empty-message">Nenhum agendamento futuro</div>';
+    }
+    
+    // Atualizar contadores
+    document.getElementById('overdueCount').textContent = overdueCount;
+    document.getElementById('upcomingCount').textContent = upcomingCount;
+    document.getElementById('futureCount').textContent = futureCount;
   };
   
   // Exibe detalhes de um agendamento

@@ -4,10 +4,14 @@ const DashboardModule = (() => {
   let metricTiles;
   let contactsTableBody;
   let chartContainer;
-  let newServiceButton;
-  const formatCurrency = (value) => `R$ ${value.toFixed(2)}`;
+  let newServiceButton;  const formatCurrency = (value) => `R$ ${value.toFixed(2)}`;  
+  
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
+    // Verifica se a data tem informação de hora (formato com T)
+    if (dateStr.includes('T')) {
+      return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+    }
     return date.toLocaleDateString('pt-BR');
   };
   // Inicialização do módulo
@@ -71,15 +75,14 @@ const DashboardModule = (() => {
     metricTiles.services.textContent = totalServices;
     metricTiles.revenue.textContent = formatCurrency(totalRevenue);
     metricTiles.expenses.textContent = formatCurrency(totalExpenses);
-  };
-  // Exibe próximos contatos ordenados por data
+  };  // Exibe próximos contatos ordenados por data
   const renderContacts = (filterText = '') => {
     const db = window.mockDB;
     const now = new Date();
     
     // Filtra e ordena agendamentos
     const upcoming = db.appointments
-      .filter(a => a.status === 'PENDING')
+      .filter(a => a.status === 'PENDING') // Apenas pendentes
       .filter(a => {
         const cust = db.customers.find(c => c.id === a.customerId);
         return !filterText || (cust && cust.name.toLowerCase().includes(filterText.toLowerCase()));
@@ -104,22 +107,22 @@ const DashboardModule = (() => {
           showCustomerDetails(cust.id);
         }
       });
-      
-      const tdDate = document.createElement('td');
+        const tdDate = document.createElement('td');
       const scheduleDate = new Date(a.scheduledFor);
-      tdDate.textContent = scheduleDate.toLocaleDateString('pt-BR');
+      tdDate.textContent = formatDate(a.scheduledFor);
       
       // Destaca datas próximas (< 7 dias)
       const daysUntil = Math.ceil((scheduleDate - now) / (1000 * 60 * 60 * 24));
       if (daysUntil <= 7) {
         tdDate.classList.add('warning-date');
       }
-      
-      tr.append(tdName, tdDate);
+        tr.append(tdName, tdDate);
       tr.dataset.appointmentId = a.id;
       tr.style.cursor = 'pointer';
       tr.addEventListener('click', () => {
-        showAppointmentDetails(a.id);
+        if (cust) {
+          showCustomerDetails(cust.id);
+        }
       });
       
       contactsTableBody.appendChild(tr);
@@ -304,8 +307,7 @@ const DashboardModule = (() => {
       }
     });
   };
-  
-  // Exibe detalhes do agendamento
+    // Exibe detalhes do agendamento
   const showAppointmentDetails = (appointmentId) => {
     const db = window.mockDB;
     const appointment = db.appointments.find(a => a.id === appointmentId);
@@ -319,6 +321,14 @@ const DashboardModule = (() => {
     const modal = document.createElement('div');
     modal.className = 'modal';
     
+    // Status para exibição
+    const statusDisplay = {
+      'PENDING': 'Pendente',
+      'DONE': 'Concluído',
+      'SCHEDULED': 'Agendado',
+      'NEVER': 'Cliente não quer mais'
+    };
+    
     // Conteúdo do modal
     modal.innerHTML = `
       <div class="modal__content">
@@ -329,22 +339,22 @@ const DashboardModule = (() => {
         <div class="modal__body">
           <p><strong>Cliente:</strong> ${customer ? customer.name : 'Cliente não encontrado'}</p>
           <p><strong>Agendado para:</strong> ${formatDate(appointment.scheduledFor)}</p>
-          <p><strong>Status:</strong> ${appointment.status === 'PENDING' ? 'Pendente' : 'Concluído'}</p>
+          <p><strong>Status:</strong> ${statusDisplay[appointment.status] || 'Desconhecido'}</p>
           <p><strong>Observações:</strong> ${appointment.notes}</p>
           ${originalService ? `<p><strong>Criado a partir do serviço de:</strong> ${formatDate(originalService.serviceDate)}</p>` : ''}
         </div>
         <div class="modal__footer">
           ${appointment.status === 'PENDING' 
-            ? `<button class="btn btn--primary" id="markDoneBtn">Marcar como Concluído</button>
-               <button class="btn" id="rescheduleBtn">Reagendar</button>`
+            ? `<button class="btn btn--primary" id="scheduleBtn">Marcar como Agendado</button>
+               <button class="btn" id="rescheduleBtn">Prorrogar Contato</button>
+               <button class="btn btn--danger" id="neverBtn">Cliente Não Quer Mais</button>`
             : ''
           }
           <button class="btn" id="closeModalBtn">Fechar</button>
         </div>
       </div>
     `;
-    
-    // Inserir modal no DOM
+      // Inserir modal no DOM
     document.body.appendChild(modal);
     
     // Adicionar event listeners aos botões
@@ -358,14 +368,19 @@ const DashboardModule = (() => {
     
     // Event listeners condicionais
     if (appointment.status === 'PENDING') {
-      modal.querySelector('#markDoneBtn').addEventListener('click', () => {
-        markAppointmentAsDone(appointmentId);
+      modal.querySelector('#scheduleBtn').addEventListener('click', () => {
+        markAppointmentAsScheduled(appointmentId);
         document.body.removeChild(modal);
       });
       
       modal.querySelector('#rescheduleBtn').addEventListener('click', () => {
         document.body.removeChild(modal);
         rescheduleAppointment(appointmentId);
+      });
+      
+      modal.querySelector('#neverBtn').addEventListener('click', () => {
+        markAppointmentAsNever(appointmentId);
+        document.body.removeChild(modal);
       });
     }
     
@@ -376,8 +391,7 @@ const DashboardModule = (() => {
       }
     });
   };
-  
-  // Marca um agendamento como concluído
+    // Marca um agendamento como concluído (DONE)
   const markAppointmentAsDone = (appointmentId) => {
     const db = window.mockDB;
     const appointment = db.appointments.find(a => a.id === appointmentId);
@@ -389,27 +403,63 @@ const DashboardModule = (() => {
     }
   };
   
-  // Reagenda um contato
+  // Marca um agendamento como agendado (SCHEDULED)
+  const markAppointmentAsScheduled = (appointmentId) => {
+    const db = window.mockDB;
+    const appointment = db.appointments.find(a => a.id === appointmentId);
+    
+    if (appointment) {
+      appointment.status = 'SCHEDULED';
+      showToast('Agendamento marcado como agendado');
+      renderContacts(); // Atualiza a lista
+    }
+  };
+  
+  // Marca um agendamento como "cliente não quer mais" (NEVER)
+  const markAppointmentAsNever = (appointmentId) => {
+    const db = window.mockDB;
+    const appointment = db.appointments.find(a => a.id === appointmentId);
+    
+    if (appointment) {
+      appointment.status = 'NEVER';
+      showToast('Cliente marcado como "não quer mais"', 'warning');
+      renderContacts(); // Atualiza a lista
+    }
+  };
+  
+  // Reagenda (Prorroga) um contato
   const rescheduleAppointment = (appointmentId) => {
     const db = window.mockDB;
     const appointment = db.appointments.find(a => a.id === appointmentId);
     
     if (!appointment) return;
     
-    // Criar modal de reagendamento
-    const modal = document.createElement('div');
+    // Criar modal de reagendamento    const modal = document.createElement('div');
     modal.className = 'modal';
+      // Extrair data e hora atuais do appointment
+    const currentDateTime = new Date(appointment.scheduledFor);
+    const currentDate = currentDateTime.toISOString().split('T')[0];
+    const currentTime = currentDateTime.toTimeString().substring(0, 5); // Formato HH:MM
     
     // Conteúdo do modal
     modal.innerHTML = `
       <div class="modal__content">
         <div class="modal__header">
-          <h2>Reagendar Contato</h2>
+          <h2>Prorrogar Contato</h2>
           <button class="modal__close">&times;</button>
         </div>
         <div class="modal__body">
-          <p>Escolha a nova data de contato:</p>
-          <input type="date" id="newDate" class="form-input" min="${new Date().toISOString().split('T')[0]}">
+          <p>Escolha a nova data e hora de contato:</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="newDate">Data:</label>
+              <input type="date" id="newDate" class="form-input" min="${new Date().toISOString().split('T')[0]}" value="${currentDate}">
+            </div>
+            <div class="form-group">
+              <label for="newTime">Horário:</label>
+              <input type="time" id="newTime" class="form-input" value="${currentTime}">
+            </div>
+          </div>
           <p><strong>Observações:</strong></p>
           <textarea id="notes" class="form-textarea">${appointment.notes}</textarea>
         </div>
@@ -431,9 +481,8 @@ const DashboardModule = (() => {
     modal.querySelector('#cancelBtn').addEventListener('click', () => {
       document.body.removeChild(modal);
     });
-    
-    modal.querySelector('#saveBtn').addEventListener('click', () => {
-      const newDate = modal.querySelector('#newDate').value;
+      modal.querySelector('#saveBtn').addEventListener('click', () => {
+      const newDate = modal.querySelector('#newDate').value;      const newTime = modal.querySelector('#newTime').value || "09:00";
       const notes = modal.querySelector('#notes').value;
       
       if (!newDate) {
@@ -441,11 +490,11 @@ const DashboardModule = (() => {
         return;
       }
       
-      // Atualizar agendamento
-      appointment.scheduledFor = newDate;
+      // Atualizar agendamento - combinar data e hora
+      appointment.scheduledFor = `${newDate}T${newTime}`;
       appointment.notes = notes;
       
-      showToast('Agendamento reagendado com sucesso');
+      showToast('Contato prorrogado com sucesso');
       renderContacts(); // Atualiza a lista
       
       document.body.removeChild(modal);
@@ -496,15 +545,16 @@ const DashboardModule = (() => {
       badge.className = 'notification-badge';
       badge.title = 'Notificações pendentes de recontato';
       header.appendChild(badge);
-    }
-    // Busca quantidade de notificações pendentes
+    }    // Busca quantidade de notificações pendentes
     let pending = 0;
     if (window.mockDB && window.mockDB.appointments) {
       const today = new Date();
       const ahead = window.mockDB.settings?.notificationDaysAhead || 7;
       const limit = new Date();
       limit.setDate(today.getDate() + ahead);
-      pending = window.mockDB.appointments.filter(a => a.status === 'PENDING' && new Date(a.scheduledFor) <= limit).length;
+      pending = window.mockDB.appointments
+        .filter(a => a.status === 'PENDING' && new Date(a.scheduledFor) <= limit)
+        .length;
     }
     badge.textContent = pending > 0 ? pending : '';
     badge.style.display = pending > 0 ? 'inline-block' : 'none';

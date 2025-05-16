@@ -57,14 +57,12 @@
 
       <section class="sales-list">
         <div class="table-container">
-          <table class="data-table">
-            <thead>
+          <table class="data-table">            <thead>
               <tr>
                 <th>Data</th>
                 <th>Cliente</th>
                 <th>Valor</th>
                 <th>Comissão</th>
-                <th>Próx. Contato</th>
                 <th>Notas</th>
               </tr>
             </thead>
@@ -161,10 +159,16 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Criar linha
       const tr = document.createElement('tr');
-      
-      // Data
+        // Data com horário
       const tdDate = document.createElement('td');
-      tdDate.textContent = new Date(service.serviceDate).toLocaleDateString('pt-BR');
+      const serviceDate = new Date(service.serviceDate);      // Verificar se a data tem informação de hora (formato com T)
+      if (service.serviceDate.includes('T')) {
+        tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} ${serviceDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+      } else {
+        // Se não tiver horário específico, adicionar um horário padrão (09:00)
+        tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} 09:00`;
+      }
+      tdDate.classList.add('highlight-cell');
       
       // Cliente
       const tdCustomer = document.createElement('td');
@@ -173,25 +177,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // Valor
       const tdPrice = document.createElement('td');
       tdPrice.textContent = formatCurrency(service.price);
-      
-      // Comissão
+        // Comissão
       const tdCommission = document.createElement('td');
       tdCommission.textContent = formatCurrency(commission);
-      
-      // Próximo contato
-      const tdNextContact = document.createElement('td');
-      if (nextAppointment) {
-        tdNextContact.textContent = new Date(nextAppointment.scheduledFor).toLocaleDateString('pt-BR');
-      } else {
-        tdNextContact.textContent = 'Não agendado';
-      }
       
       // Notas
       const tdNotes = document.createElement('td');
       tdNotes.textContent = service.notes || '-';
+      tdNotes.classList.add('service-description');
       
       // Adicionar células à linha
-      tr.append(tdDate, tdCustomer, tdPrice, tdCommission, tdNextContact, tdNotes);
+      tr.append(tdDate, tdCustomer, tdPrice, tdCommission, tdNotes);
       
       // Adicionar linha à tabela
       salesTableBody.appendChild(tr);
@@ -202,9 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
   searchInput.addEventListener('input', e => {
     renderSalesList(e.target.value);
   });
-  
-  newSaleBtn.addEventListener('click', () => {
-    window.ServicesModule.addNewService();
+    newSaleBtn.addEventListener('click', () => {
+    window.ServicesModule.showNewServiceModal();
     renderMetrics();
     renderSalesList();
   });

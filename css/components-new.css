@@ -34,6 +34,16 @@
   font-weight: 600;
 }
 
+.highlight-cell {
+  font-weight: 600;
+  color: #0066cc;
+}
+
+.service-description {
+  font-style: italic;
+  color: #555;
+}
+
 /* Metrics */
 .metrics {
   display: grid;

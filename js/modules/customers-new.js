@@ -5,22 +5,24 @@ const CustomersModule = (() => {
   let customerTable;
   let searchInput;
   let addCustomerBtn;
-  
-  // Formatação de datas 
+    // Formatação de datas 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
+    // Verifica se a data tem informação de hora (formato com T)
+    if (dateStr.includes('T')) {
+      return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+    }
     return date.toLocaleDateString('pt-BR');
   };
-  
-  // Inicialização do módulo
+    // Inicialização do módulo
   const init = () => {
     const isCustomersPage = window.location.pathname.includes('clientes.html');
     
     if (isCustomersPage) {
       // Estamos na página de clientes
-      customerTable = document.querySelector('.customers-table tbody');
+      customerTable = document.querySelector('#clientTableBody'); // Fixed selector
       searchInput = document.querySelector('.header__search');
-      addCustomerBtn = document.querySelector('.btn--add-customer');
+      addCustomerBtn = document.querySelector('#newClientBtn'); // Fixed selector
       
       // Configurar eventos
       if (addCustomerBtn) {

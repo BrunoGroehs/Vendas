@@ -18,6 +18,7 @@ const customers = [
 const services = [
   { id: 1, customerId: 1, employeeId: 2, serviceDate: '2025-05-01', price: 150.00, commissionPct: 10, notes: 'Limpeza completa' },
   { id: 2, customerId: 2, employeeId: 2, serviceDate: '2025-04-15', price: 120.00, commissionPct: 15, notes: 'Limpeza express' },
+  { id: 2, customerId: 2, employeeId: 2, serviceDate: '2026-04-15', price: 120.00, commissionPct: 15, notes: 'Limpeza express' },
   { id: 3, customerId: 3, employeeId: 2, serviceDate: '2025-04-20', price: 200.00, commissionPct: 10, notes: 'Limpeza completa + enceramento' },
   { id: 4, customerId: 1, employeeId: 2, serviceDate: '2025-03-01', price: 150.00, commissionPct: 10, notes: 'Limpeza regular' },
   { id: 5, customerId: 4, employeeId: 2, serviceDate: '2025-05-05', price: 180.00, commissionPct: 12, notes: 'Limpeza premium' }
@@ -25,10 +26,10 @@ const services = [
 
 // Próximos agendamentos
 const appointments = [
-  { id: 1, customerId: 1, scheduledFor: '2026-05-01', createdFromServiceId: 1, status: 'PENDING', notes: 'Limpeza anual' },
-  { id: 2, customerId: 2, scheduledFor: '2026-04-15', createdFromServiceId: 2, status: 'PENDING', notes: 'Manutenção regular' },
-  { id: 3, customerId: 3, scheduledFor: '2026-04-20', createdFromServiceId: 3, status: 'PENDING', notes: 'Limpeza completa' },
-  { id: 4, customerId: 4, scheduledFor: '2025-05-15', createdFromServiceId: 5, status: 'PENDING', notes: 'Verificação pós-serviço' }
+  { id: 1, customerId: 1, scheduledFor: '2026-05-01T09:00', createdFromServiceId: 1, status: 'PENDING', notes: 'Limpeza anual' },
+  { id: 2, customerId: 2, scheduledFor: '2026-04-15T14:30', createdFromServiceId: 2, status: 'PENDING', notes: 'Manutenção regular' },
+  { id: 3, customerId: 3, scheduledFor: '2026-04-20T10:00', createdFromServiceId: 3, status: 'PENDING', notes: 'Limpeza completa' },
+  { id: 4, customerId: 4, scheduledFor: '2025-04-15T15:45', createdFromServiceId: 5, status: 'PENDING', notes: 'Verificação pós-serviço' }
 ];
 
 // Despesas

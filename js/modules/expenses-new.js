@@ -12,14 +12,13 @@ const ExpensesModule = (() => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('pt-BR');
   };
-  
-  // Inicialização do módulo
+    // Inicialização do módulo
   const init = () => {
     const isDespesasPage = window.location.pathname.includes('despesas.html');
     
     if (isDespesasPage) {
-      expensesTable = document.querySelector('.expenses-table tbody');
-      addExpenseBtn = document.querySelector('.btn--add-expense');
+      expensesTable = document.querySelector('#expenseTableBody');
+      addExpenseBtn = document.querySelector('#newExpenseBtn');
       filterForm = document.querySelector('.filter-form');
       
       if (addExpenseBtn) {
@@ -524,14 +523,25 @@ const ExpensesModule = (() => {
       }
     });
   };
-  
   // Adiciona uma nova despesa ao banco de dados
   const addExpense = (expense) => {
     const db = window.mockDB;
     if (!db) return false;
     
     try {
+      // If no expense object was provided (just called as "addExpense()" without parameters)
+      // then we should show the modal instead
+      if (!expense) {
+        showAddExpenseModal();
+        return true;
+      }
+      
       db.expenses.push(expense);
+      
+      // Disparar evento para notificar que uma despesa foi adicionada
+      const event = new CustomEvent('expenseAdded', { detail: expense });
+      document.dispatchEvent(event);
+      
       return true;
     } catch (error) {
       console.error('Erro ao adicionar despesa:', error);

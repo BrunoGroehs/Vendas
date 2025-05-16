@@ -1,6 +1,16 @@
 // filepath: c:\Users\I753372\Desktop\projetos\TesteGPT\js\modules\services.js
 // Services module - Gerencia vendas/serviços e agendamentos
 const ServicesModule = (() => {
+  // Formatação de datas
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr);
+    // Verifica se a data tem informação de hora (formato com T)
+    if (dateStr.includes('T')) {
+      return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+    }
+    return date.toLocaleDateString('pt-BR');
+  };
+  
   // Inicialização
   const init = () => {
     // Verificar se estamos na página de vendas
@@ -29,30 +39,39 @@ const ServicesModule = (() => {
 
     // Adicionar novo serviço
     const newServiceId = db.services.length > 0 ? Math.max(...db.services.map(s => s.id)) + 1 : 1;
+      // Ensure serviceDate includes time information
+    let serviceDateTime = serviceData.serviceDate;
+    if (!serviceDateTime.includes('T') && serviceData.scheduledTime) {
+      serviceDateTime = `${serviceDateTime}T${serviceData.scheduledTime}`;
+    }
     
     const newService = {
       id: newServiceId,
       customerId: serviceData.customerId,
       employeeId: serviceData.employeeId,
-      serviceDate: serviceData.serviceDate,
+      serviceDate: serviceDateTime,
       price: serviceData.price,
       commissionPct: serviceData.commissionPct || db.settings.defaultCommissionPct,
       notes: serviceData.notes
     };
     
-    db.services.push(newService);
-    
-    // Criar agendamento para o próximo ano
+    db.services.push(newService);      // Criar agendamento para o próximo ano
     const nextYear = new Date(serviceData.serviceDate);
     nextYear.setFullYear(nextYear.getFullYear() + 1);
     
+    // Mantém o horário se foi especificado, senão usa 09:00 como padrão
+    const scheduledTime = serviceData.scheduledTime || '09:00';
+    
     const newAppointmentId = db.appointments.length > 0 ? 
       Math.max(...db.appointments.map(a => a.id)) + 1 : 1;
-      
+    
+    // Usar a data correta garantindo que não há problemas de fuso horário
+    const nextYearStr = nextYear.toISOString().split('T')[0];
+    
     const newAppointment = {
       id: newAppointmentId,
       customerId: serviceData.customerId,
-      scheduledFor: nextYear.toISOString().split('T')[0],
+      scheduledFor: `${nextYearStr}T${scheduledTime}`,
       createdFromServiceId: newServiceId,
       status: 'PENDING',
       notes: `Limpeza anual a partir do serviço de ${new Date(serviceData.serviceDate).toLocaleDateString('pt-BR')}`
@@ -123,11 +142,14 @@ const ServicesModule = (() => {
                 </div>
               </div>
               
-              <!-- Step 2: Detalhes do serviço -->
-              <div class="wizard__panel" data-panel="2">
+              <!-- Step 2: Detalhes do serviço -->              <div class="wizard__panel" data-panel="2">
                 <div class="form-group">
                   <label for="serviceDate">Data:</label>
                   <input type="date" id="serviceDate" class="form-input" value="${today}">
+                </div>
+                <div class="form-group">
+                  <label for="scheduledTime">Horário agendado:</label>
+                  <input type="time" id="scheduledTime" class="form-input" value="09:00">
                 </div>
                 <div class="form-group">
                   <label for="price">Valor (R$):</label>
@@ -219,28 +241,31 @@ const ServicesModule = (() => {
         generateSummary();
       }
     };
-    
-    // Gerar resumo para confirmação
+      // Gerar resumo para confirmação
     const generateSummary = () => {
-      const customerId = parseInt(modal.querySelector('#customer').value);
+      const customerId = parseInt(modal.querySelector('#customer').value);      
       const customer = db.customers.find(c => c.id === customerId);
       const serviceDate = modal.querySelector('#serviceDate').value;
+      const scheduledTime = modal.querySelector('#scheduledTime').value || "09:00";
       const price = parseFloat(modal.querySelector('#price').value) || 0;
       const employeeId = parseInt(modal.querySelector('#employee').value);
       const employee = db.users.find(u => u.id === employeeId);
       
-      // Formatar data
-      const formattedDate = new Date(serviceDate).toLocaleDateString('pt-BR');
+      // Criar objeto de data sem alterar dia por causa do fuso horário
+      const dateParts = serviceDate.split('-');
+      const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]} ${scheduledTime}`;
       
       // Calcular próximo contato (1 ano depois)
       const nextYear = new Date(serviceDate);
       nextYear.setFullYear(nextYear.getFullYear() + 1);
-      const nextContactDate = nextYear.toLocaleDateString('pt-BR');
+      // Formatar próxima data usando mesma lógica para evitar problemas de fuso horário
+      const nextYearParts = nextYear.toISOString().split('T')[0].split('-');
+      const nextContactDate = `${nextYearParts[2]}/${nextYearParts[1]}/${nextYearParts[0]} ${scheduledTime}`;
       
       // Resumo do serviço atual
       const serviceSummary = `
         <p><strong>Cliente:</strong> ${customer ? customer.name : 'Não selecionado'}</p>
-        <p><strong>Data:</strong> ${formattedDate}</p>
+        <p><strong>Data e hora:</strong> ${formattedDate}</p>
         <p><strong>Valor:</strong> R$ ${price.toFixed(2)}</p>
         <p><strong>Funcionário:</strong> ${employee ? employee.name : 'Não selecionado'}</p>
       `;
@@ -290,12 +315,12 @@ const ServicesModule = (() => {
       
       return true;
     };
-    
-    // Salvar serviço
+      // Salvar serviço
     const saveService = () => {
       // Coletar dados do formulário
       const customerId = parseInt(modal.querySelector('#customer').value);
       const serviceDate = modal.querySelector('#serviceDate').value;
+      const scheduledTime = modal.querySelector('#scheduledTime').value;
       const price = parseFloat(modal.querySelector('#price').value);
       const employeeId = parseInt(modal.querySelector('#employee').value);
       const commissionPct = parseInt(modal.querySelector('#commissionPct').value);
@@ -305,6 +330,7 @@ const ServicesModule = (() => {
       const serviceData = {
         customerId,
         serviceDate,
+        scheduledTime,
         price,
         employeeId,
         commissionPct,
@@ -312,17 +338,23 @@ const ServicesModule = (() => {
       };
       
       // Adicionar no banco de dados
-      const result = addNewService(serviceData);
-      
-      if (result) {
-        // Mostrar toast de sucesso
+      const result = addNewService(serviceData);      if (result) {
+        // Disparar evento para notificar que um serviço foi adicionado
+        const event = new CustomEvent('serviceAdded', { detail: result });
+        document.dispatchEvent(event);
+        
+        // Se estamos na página dashboard, atualizar
         if (typeof window.DashboardModule !== 'undefined') {
-          // Se estamos na página dashboard, atualizar
           window.DashboardModule.renderMetrics();
           window.DashboardModule.renderContacts();
         }
         
-        showToast(`Venda registrada com sucesso. Próximo contato agendado para ${new Date(result.appointment.scheduledFor).toLocaleDateString('pt-BR')}`);
+        // Formatar data de próximo contato usando método correto para evitar problemas de fuso horário
+        let appointmentDate = new Date(result.appointment.scheduledFor);
+        // Garantir que estamos usando a data correta, não a do fuso horário
+        let formattedAppointmentDate = formatDate(result.appointment.scheduledFor);
+        
+        showToast(`Venda registrada com sucesso. Próximo contato agendado para ${formattedAppointmentDate}`);
       } else {
         showToast('Erro ao registrar venda', 'error');
       }
@@ -396,9 +428,8 @@ const ServicesModule = (() => {
       const employee = db.users.find(u => u.id === service.employeeId);
       
       const tr = document.createElement('tr');
-      
-      // Formatação de data
-      const serviceDate = new Date(service.serviceDate).toLocaleDateString('pt-BR');
+        // Formatação de data com hora usando a função formatDate
+      const serviceDate = formatDate(service.serviceDate);
       
       // Cálculo da comissão
       const commission = (service.price * service.commissionPct) / 100;

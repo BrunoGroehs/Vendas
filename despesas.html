@@ -216,16 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
       expenseTableBody.appendChild(tr);
     });
   }
-  
-  // Eventos
+    // Eventos
   searchInput.addEventListener('input', e => {
     renderExpenseList(e.target.value);
   });
   
   newExpenseBtn.addEventListener('click', () => {
-    window.ExpensesModule.addExpense();
-    renderMetrics();
-    renderExpenseList();
+    window.ExpensesModule.showAddExpenseModal();
+    // The modal will handle the adding of the expense,
+    // and the custom event below will handle updating the UI
   });
   
   // Ouvir por alterações no módulo de despesas
