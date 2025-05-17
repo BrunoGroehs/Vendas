@@ -11,7 +11,9 @@ const customers = [
   { id: 1, name: 'João Silva', phone: '(11) 91234-5678', address: 'Rua A, 123', email: 'joao@example.com', city: 'São Paulo', state: 'SP', zip: '01234-567', createdAt: '2025-01-15', preferredChannel: 'SMS' },
   { id: 2, name: 'Maria Souza', phone: '(21) 99876-5432', address: 'Av. B, 456', email: 'maria@example.com', city: 'Rio de Janeiro', state: 'RJ', zip: '20000-000', createdAt: '2025-02-10', preferredChannel: 'EMAIL' },
   { id: 3, name: 'Carlos Lima', phone: '(31) 98765-4321', address: 'Praça C, 789', email: 'carlos@example.com', city: 'Belo Horizonte', state: 'MG', zip: '30000-000', createdAt: '2025-03-05', preferredChannel: 'SMS' },
-  { id: 4, name: 'Ana Ferreira', phone: '(41) 97654-3210', address: 'Rua D, 101', email: 'ana@example.com', city: 'Curitiba', state: 'PR', zip: '80000-000', createdAt: '2025-03-20', preferredChannel: 'EMAIL' }
+  { id: 4, name: 'Ana Ferreira', phone: '(41) 97654-3210', address: 'Rua D, 101', email: 'ana@example.com', city: 'Curitiba', state: 'PR', zip: '80000-000', createdAt: '2025-03-20', preferredChannel: 'EMAIL' },
+  { id: 5, name: 'Roberto Almeida', phone: '(51) 98888-7777', address: 'Av. E, 202', email: 'roberto@example.com', city: 'Porto Alegre', state: 'RS', zip: '90000-000', createdAt: '2025-04-05', preferredChannel: 'WHATSAPP' },
+  { id: 6, name: 'Julia Santos', phone: '(19) 97777-8888', address: 'Rua F, 303', email: 'julia@example.com', city: 'Campinas', state: 'SP', zip: '13000-000', createdAt: '2025-04-15', preferredChannel: 'WHATSAPP' }
 ];
 
 // Serviços realizados
@@ -29,7 +31,12 @@ const appointments = [
   { id: 1, customerId: 1, scheduledFor: '2026-05-01T09:00', createdFromServiceId: 1, status: 'PENDING', notes: 'Limpeza anual' },
   { id: 2, customerId: 2, scheduledFor: '2026-04-15T14:30', createdFromServiceId: 2, status: 'PENDING', notes: 'Manutenção regular' },
   { id: 3, customerId: 3, scheduledFor: '2026-04-20T10:00', createdFromServiceId: 3, status: 'PENDING', notes: 'Limpeza completa' },
-  { id: 4, customerId: 4, scheduledFor: '2025-04-15T15:45', createdFromServiceId: 5, status: 'PENDING', notes: 'Verificação pós-serviço' }
+  { id: 4, customerId: 4, scheduledFor: '2025-05-15T15:45', createdFromServiceId: 5, status: 'PENDING', notes: 'Verificação pós-serviço' },
+  { id: 5, customerId: 5, scheduledFor: '2025-05-12T09:30', createdFromServiceId: null, status: 'PENDING', notes: 'Orçamento inicial' },
+  { id: 6, customerId: 6, scheduledFor: '2025-05-18T11:00', createdFromServiceId: null, status: 'PENDING', notes: 'Primeira visita' },
+  { id: 7, customerId: 1, scheduledFor: '2025-05-10T14:00', createdFromServiceId: null, status: 'PENDING', notes: 'Verificação de garantia' },
+  { id: 8, customerId: 3, scheduledFor: '2025-04-25T16:30', createdFromServiceId: null, status: 'PENDING', notes: 'Reparo emergencial' },
+  { id: 9, customerId: 2, scheduledFor: '2025-05-05T10:15', createdFromServiceId: null, status: 'PENDING', notes: 'Manutenção preventiva' }
 ];
 
 // Despesas

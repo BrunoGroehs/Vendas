@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       link.classList.remove('active');
     }
-  });
-  // Initialize all modules
+  });  // Initialize all modules
+  if (window.ComponentsModule) console.log('Componentes inicializados');
   if (window.DashboardModule) window.DashboardModule.init();
   if (window.CustomersModule) window.CustomersModule.init();
   if (window.ServicesModule) window.ServicesModule.init();

@@ -6,6 +6,16 @@
 <title>Vendas - Gestão Lavagem de Placas</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="css/components-new.css">
+<style>
+  .customer-link {
+    color: #2563eb;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .customer-link:hover {
+    text-decoration: underline;
+  }
+</style>
 </head>
 <body>
 <div class="app">
@@ -77,6 +87,8 @@
 </div>
 
 <script src="js/mockData.js"></script>
+<script src="js/modules/toast.js"></script>
+<script src="js/modules/components.js"></script>
 <script src="js/modules/services-new.js"></script>
 <script src="js/modules/customers-new.js"></script>
 <script src="js/modules/notifications-new.js"></script>
@@ -168,11 +180,25 @@ document.addEventListener('DOMContentLoaded', () => {
         // Se não tiver horário específico, adicionar um horário padrão (09:00)
         tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} 09:00`;
       }
-      tdDate.classList.add('highlight-cell');
-      
-      // Cliente
+      tdDate.classList.add('highlight-cell');      // Cliente
       const tdCustomer = document.createElement('td');
-      tdCustomer.textContent = customer ? customer.name : 'Cliente não encontrado';
+      if (customer) {
+        tdCustomer.innerHTML = `<a href="#" class="customer-link">${customer.name}</a>`;
+        tdCustomer.querySelector('.customer-link').addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation(); // Prevent event from bubbling up to row
+          // Use the reusable component if available, otherwise fallback
+          if (window.ComponentsModule && typeof window.ComponentsModule.showCustomerDetailsModal === 'function') {
+            window.ComponentsModule.showCustomerDetailsModal(customer.id);
+          } else if (window.CustomersModule && typeof window.CustomersModule.showCustomerDetails === 'function') {
+            window.CustomersModule.showCustomerDetails(customer.id);
+          } else {
+            window.showToast('Detalhes do cliente em implementação', 'warning');
+          }
+        });
+      } else {
+        tdCustomer.textContent = 'Cliente não encontrado';
+      }
       
       // Valor
       const tdPrice = document.createElement('td');

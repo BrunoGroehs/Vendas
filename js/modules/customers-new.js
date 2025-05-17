@@ -130,142 +130,184 @@ const CustomersModule = (() => {
       customerTable.appendChild(tr);
     }
   };
-  
-  // Exibe modal com detalhes do cliente
+    // Exibe modal com detalhes do cliente
   const showCustomerDetails = (customerId) => {
-    const db = window.mockDB;
-    if (!db) return;
-    
-    const customer = db.customers.find(c => c.id === customerId);
-    if (!customer) return;
-    
-    // Filtrar serviços deste cliente
-    const customerServices = db.services.filter(s => s.customerId === customerId)
-      .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
+    // Usar o componente reutilizável se disponível
+    if (window.ComponentsModule && typeof window.ComponentsModule.showCustomerDetailsModal === 'function') {
+      // Chamar o componente com uma callback para editar o cliente
+      const modal = window.ComponentsModule.showCustomerDetailsModal(customerId, () => {
+        // Esta callback não é necessária aqui
+      });
+
+      // Se o botão de editar cliente estiver presente, substituímos o comportamento
+      if (modal) {
+        const editBtn = modal.querySelector('#editCustomerBtn');
+        if (!editBtn) {
+          // Se não existir, criamos o botão
+          const footer = modal.querySelector('.modal__footer');
+          if (footer) {
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn';
+            editBtn.id = 'editCustomerBtn';
+            editBtn.textContent = 'Editar Cliente';
+            
+            // Inserir antes do último botão (Fechar)
+            const lastBtn = footer.querySelector('#closeModalBtn');
+            if (lastBtn) {
+              footer.insertBefore(editBtn, lastBtn);
+            } else {
+              footer.appendChild(editBtn);
+            }
+            
+            editBtn.addEventListener('click', () => {
+              document.body.removeChild(modal);
+              showEditCustomerModal(customerId);
+            });
+          }
+        } else {
+          // Se o botão já existe, atualizamos seu evento
+          editBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+            showEditCustomerModal(customerId);
+          });
+        }
+      }
+    } else {
+      // Implementação original
+      const db = window.mockDB;
+      if (!db) return;
       
-    // Filtrar próximos agendamentos
-    const customerAppointments = db.appointments.filter(a => a.customerId === customerId)
-      .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor));
+      const customer = db.customers.find(c => c.id === customerId);
+      if (!customer) return;
       
-    // Criar modal
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    
-    // Conteúdo do modal
-    modal.innerHTML = `
-      <div class="modal__content">
-        <div class="modal__header">
-          <h2>Cliente: ${customer.name}</h2>
-          <button class="modal__close">&times;</button>
-        </div>
-        <div class="modal__body">
-          <div class="customer-details">
-            <div class="customer-info">
-              <h3>Informações Pessoais</h3>
-              <p><strong>Telefone:</strong> ${customer.phone}</p>
-              <p><strong>Email:</strong> ${customer.email}</p>
-              <p><strong>Endereço:</strong> ${customer.address}</p>
-              <p><strong>Cidade:</strong> ${customer.city} - ${customer.state}</p>
-              <p><strong>CEP:</strong> ${customer.zip}</p>
-              <p><strong>Cliente desde:</strong> ${formatDate(customer.createdAt)}</p>
-              <p><strong>Canal preferido:</strong> ${customer.preferredChannel}</p>
+      // Filtrar serviços deste cliente
+      const customerServices = db.services.filter(s => s.customerId === customerId)
+        .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
+        
+      // Filtrar próximos agendamentos
+      const customerAppointments = db.appointments.filter(a => a.customerId === customerId)
+        .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor));
+        
+      // Criar modal
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      
+      // Conteúdo do modal
+      modal.innerHTML = `
+        <div class="modal__content">
+          <div class="modal__header">
+            <h2>Cliente: ${customer.name}</h2>
+            <button class="modal__close">&times;</button>
+          </div>
+          <div class="modal__body">
+            <div class="customer-details">
+              <div class="customer-info">
+                <h3>Informações Pessoais</h3>
+                <p><strong>Telefone:</strong> ${customer.phone}</p>
+                <p><strong>Email:</strong> ${customer.email}</p>
+                <p><strong>Endereço:</strong> ${customer.address}</p>
+                <p><strong>Cidade:</strong> ${customer.city} - ${customer.state}</p>
+                <p><strong>CEP:</strong> ${customer.zip}</p>
+                <p><strong>Cliente desde:</strong> ${formatDate(customer.createdAt)}</p>
+                <p><strong>Canal preferido:</strong> ${customer.preferredChannel}</p>
+              </div>
+              
+              <div class="customer-services">
+                <h3>Histórico de Serviços (${customerServices.length})</h3>
+                ${customerServices.length > 0 
+                  ? `<ul class="services-list">
+                      ${customerServices.map(service => `
+                        <li>
+                          <div class="service-date">${formatDate(service.serviceDate)}</div>
+                          <div class="service-price">R$ ${service.price.toFixed(2)}</div>
+                          <div class="service-notes">${service.notes || ''}</div>
+                        </li>
+                      `).join('')}
+                     </ul>`
+                  : '<p>Nenhum serviço registrado</p>'
+                }
+              </div>
             </div>
             
-            <div class="customer-services">
-              <h3>Histórico de Serviços (${customerServices.length})</h3>
-              ${customerServices.length > 0 
-                ? `<ul class="services-list">
-                    ${customerServices.map(service => `
-                      <li>
-                        <div class="service-date">${formatDate(service.serviceDate)}</div>
-                        <div class="service-price">R$ ${service.price.toFixed(2)}</div>
-                        <div class="service-notes">${service.notes || ''}</div>
-                      </li>
-                    `).join('')}
+            <div class="customer-appointments">
+              <h3>Próximos Agendamentos</h3>
+              ${customerAppointments.filter(a => a.status === 'PENDING').length > 0
+                ? `<ul class="appointments-list">
+                    ${customerAppointments
+                      .filter(a => a.status === 'PENDING')
+                      .map(appointment => `
+                        <li>
+                          <div class="appointment-date">${formatDate(appointment.scheduledFor)}</div>
+                          <div class="appointment-notes">${appointment.notes || ''}</div>
+                          <button class="btn btn--small btn--details view-appointment" 
+                                  data-appointment-id="${appointment.id}">
+                            Ver Agendamento
+                          </button>
+                        </li>
+                      `).join('')}
                    </ul>`
-                : '<p>Nenhum serviço registrado</p>'
+                : '<p>Nenhum agendamento pendente</p>'
               }
             </div>
           </div>
-          
-          <div class="customer-appointments">
-            <h3>Próximos Agendamentos</h3>
-            ${customerAppointments.filter(a => a.status === 'PENDING').length > 0
-              ? `<ul class="appointments-list">
-                  ${customerAppointments
-                    .filter(a => a.status === 'PENDING')
-                    .map(appointment => `
-                      <li>
-                        <div class="appointment-date">${formatDate(appointment.scheduledFor)}</div>
-                        <div class="appointment-notes">${appointment.notes || ''}</div>
-                        <button class="btn btn--small btn--details view-appointment" 
-                                data-appointment-id="${appointment.id}">
-                          Ver Agendamento
-                        </button>
-                      </li>
-                    `).join('')}
-                 </ul>`
-              : '<p>Nenhum agendamento pendente</p>'
-            }
+          <div class="modal__footer">
+            <button class="btn btn--primary" id="addServiceBtn">Registrar Novo Serviço</button>
+            <button class="btn" id="editCustomerBtn">Editar Cliente</button>
+            <button class="btn" id="closeModalBtn">Fechar</button>
           </div>
         </div>
-        <div class="modal__footer">
-          <button class="btn btn--primary" id="addServiceBtn">Registrar Novo Serviço</button>
-          <button class="btn" id="editCustomerBtn">Editar Cliente</button>
-          <button class="btn" id="closeModalBtn">Fechar</button>
-        </div>
-      </div>
-    `;
-    
-    // Inserir modal no DOM
-    document.body.appendChild(modal);
-    
-    // Adicionar event listeners aos botões
-    modal.querySelector('.modal__close').addEventListener('click', () => {
-      document.body.removeChild(modal);
-    });
-    
-    modal.querySelector('#closeModalBtn').addEventListener('click', () => {
-      document.body.removeChild(modal);
-    });
-    
-    // Botão para registrar novo serviço
-    modal.querySelector('#addServiceBtn').addEventListener('click', () => {
-      document.body.removeChild(modal);
-      if (window.ServicesModule && typeof window.ServicesModule.showNewServiceModal === 'function') {
-        window.ServicesModule.showNewServiceModal(customer.id);
-      } else {
-        window.showToast('Módulo de serviços em implementação', 'warning');
-      }
-    });
-    
-    // Botão para editar cliente
-    modal.querySelector('#editCustomerBtn').addEventListener('click', () => {
-      document.body.removeChild(modal);
-      showEditCustomerModal(customer.id);
-    });
-    
-    // Botões para ver agendamentos
-    const appointmentBtns = modal.querySelectorAll('.view-appointment');
-    appointmentBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const appointmentId = parseInt(btn.dataset.appointmentId);
+      `;
+      
+      // Inserir modal no DOM
+      document.body.appendChild(modal);
+      
+      // Adicionar event listeners aos botões
+      modal.querySelector('.modal__close').addEventListener('click', () => {
         document.body.removeChild(modal);
-        
-        if (window.DashboardModule && typeof window.DashboardModule.showAppointmentDetails === 'function') {
-          window.DashboardModule.showAppointmentDetails(appointmentId);
+      });
+      
+      modal.querySelector('#closeModalBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+      });
+      
+      // Botão para registrar novo serviço
+      modal.querySelector('#addServiceBtn').addEventListener('click', () => {
+        document.body.removeChild(modal);
+        if (window.ServicesModule && typeof window.ServicesModule.showNewServiceModal === 'function') {
+          window.ServicesModule.showNewServiceModal(customer.id);
         } else {
-          window.showToast('Visualização de agendamento em implementação', 'warning');
+          window.showToast('Módulo de serviços em implementação', 'warning');
         }
       });
-    });
-    
-    // Fechar ao clicar fora do conteúdo
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
+      
+      // Botão para editar cliente
+      modal.querySelector('#editCustomerBtn').addEventListener('click', () => {
         document.body.removeChild(modal);
-      }
-    });
+        showEditCustomerModal(customer.id);
+      });
+      
+      // Botões para ver agendamentos
+      const appointmentBtns = modal.querySelectorAll('.view-appointment');
+      appointmentBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const appointmentId = parseInt(btn.dataset.appointmentId);
+          document.body.removeChild(modal);
+          
+          if (window.DashboardModule && typeof window.DashboardModule.showAppointmentDetails === 'function') {
+            window.DashboardModule.showAppointmentDetails(appointmentId);
+          } else {
+            window.showToast('Visualização de agendamento em implementação', 'warning');
+          }
+        });
+      });
+      
+      // Fechar ao clicar fora do conteúdo
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          document.body.removeChild(modal);
+        }
+      });
+    }
   };
   
   // Exibe modal para adicionar cliente
