@@ -3,8 +3,17 @@
 const NotificationsModule = (() => {
   // Formatação de datas
   const formatDate = (dateStr) => {
+    if (!dateStr) {
+      console.warn('formatDate: Received undefined or null dateStr');
+      return 'Data inválida';
+    }
+
     const date = new Date(dateStr);
-    // Verifica se a data tem informação de hora (formato com T)
+    if (isNaN(date.getTime())) {
+      console.warn(`formatDate: Invalid date string received: ${dateStr}`);
+      return 'Data inválida';
+    }
+
     if (dateStr.includes('T')) {
       return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
     }
@@ -44,69 +53,91 @@ const NotificationsModule = (() => {
     }
   };
     // Renderiza o quadro kanban
-  const renderKanbanBoard = (searchText = '') => {
+  const renderKanbanBoard = async (searchText = '') => {
     const kanbanContainer = document.querySelector('.kanban');
     if (!kanbanContainer) return;
-    
-    const db = window.mockDB;
-    if (!db) return;
-    
+
     // Limpar conteúdo existente
     kanbanContainer.innerHTML = '';
-    
+
     // Data atual para comparações
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Datas para classificação
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
-    
-    // Filtrar os agendamentos pendentes
-    const pendingAppointments = db.appointments.filter(a => {
-      // Filtrar por status pendente
-      if (a.status !== 'PENDING') return false;
+
+    // Adicionar logs para verificar os dados retornados pela API
+    try {
+      const appointments = await API.getAppointments();
+      const customers = await API.getCustomers();
+
+      // Filtrar e processar os dados aqui...
+      // Filtrar os agendamentos pendentes
+      const pendingAppointments = appointments.filter(a => {
+        if (a.status !== 'PENDING') return false;
+
+        if (!searchText) return true;
+
+        const customer = customers.find(c => c.id === a.customerId);
+        if (!customer) return false;
+
+        const searchLower = searchText.toLowerCase();
+        return (
+          customer.name.toLowerCase().includes(searchLower) ||
+          customer.phone.toLowerCase().includes(searchLower) ||
+          customer.email.toLowerCase().includes(searchLower)
+        );
+      });
+
+      // Corrigir os filtros para considerar corretamente as datas e horários
+      // Adicionar logs detalhados para depuração
+      // console.log('Hoje:', today);
+      // console.log('Próxima semana:', nextWeek);
+      // console.log('Agendamentos pendentes:', pendingAppointments);
+
+      // Corrigir o acesso à propriedade 'scheduledfor' (tudo em minúsculas)
+      const overdueAppointments = pendingAppointments.filter(a => {
+        const appointmentDate = new Date(a.scheduledfor);
+        // console.log(`Verificando overdue: ${appointmentDate} < ${today}`);
+        return appointmentDate < today;
+      });
+
+      const upcomingAppointments = pendingAppointments.filter(a => {
+        const appointmentDate = new Date(a.scheduledfor);
+        // console.log(`Verificando upcoming: ${appointmentDate} >= ${today} && ${appointmentDate} < ${nextWeek}`);
+        return appointmentDate >= today && appointmentDate < nextWeek;
+      });
+
+      const futureAppointments = pendingAppointments.filter(a => {
+        const appointmentDate = new Date(a.scheduledfor);
+        // console.log(`Verificando future: ${appointmentDate} >= ${nextWeek}`);
+        return appointmentDate >= nextWeek;
+      });
       
-      // Filtrar por texto de pesquisa
-      if (!searchText) return true;
+      // Adicionar logs para os dados filtrados
+      console.log('Overdue Appointments:', overdueAppointments);
+      console.log('Upcoming Appointments:', upcomingAppointments);
+      console.log('Future Appointments:', futureAppointments);
       
-      // Buscar cliente relacionado
-      const customer = db.customers.find(c => c.id === a.customerId);
-      if (!customer) return false;
+      // Criar colunas do Kanban
+      const overdueColumn = createKanbanColumn('Atrasados', overdueAppointments, 'overdue', customers);
+      const upcomingColumn = createKanbanColumn('Próximos 7 dias', upcomingAppointments, 'upcoming', customers);
+      const futureColumn = createKanbanColumn('Agendamentos Futuros', futureAppointments, 'future', customers);
       
-      // Verificar se o texto de pesquisa está no nome ou telefone do cliente
-      const searchLower = searchText.toLowerCase();
-      return (
-        customer.name.toLowerCase().includes(searchLower) ||
-        customer.phone.toLowerCase().includes(searchLower) ||
-        customer.email.toLowerCase().includes(searchLower)
-      );
-    });
-    
-    // Classificar por data para os três quadros
-    const overdueAppointments = pendingAppointments.filter(a => new Date(a.scheduledFor) < today);
-    const upcomingAppointments = pendingAppointments.filter(a => {
-      const date = new Date(a.scheduledFor);
-      return date >= today && date < nextWeek;
-    });
-    const futureAppointments = pendingAppointments.filter(a => {
-      const date = new Date(a.scheduledFor);
-      return date >= nextWeek;
-    });
-    
-    // Criar colunas do Kanban
-    const overdueColumn = createKanbanColumn('Atrasados', overdueAppointments, 'overdue');
-    const upcomingColumn = createKanbanColumn('Próximos 7 dias', upcomingAppointments, 'upcoming');
-    const futureColumn = createKanbanColumn('Agendamentos Futuros', futureAppointments, 'future');
-    
-    // Adicionar colunas ao container
-    kanbanContainer.appendChild(overdueColumn);
-    kanbanContainer.appendChild(upcomingColumn);
-    kanbanContainer.appendChild(futureColumn);
+      // Adicionar colunas ao container
+      kanbanContainer.appendChild(overdueColumn);
+      kanbanContainer.appendChild(upcomingColumn);
+      kanbanContainer.appendChild(futureColumn);
+    } catch (error) {
+      console.error('Erro ao buscar dados da API:', error);
+      window.showToast('Erro ao carregar dados', 'error');
+    }
   };
   
   // Cria uma coluna do kanban
-  const createKanbanColumn = (title, appointments, columnClass) => {
+  const createKanbanColumn = (title, appointments, columnClass, customers) => {
     const column = document.createElement('div');
     column.className = `kanban-column ${columnClass}`;
     
@@ -124,26 +155,22 @@ const NotificationsModule = (() => {
     const body = document.createElement('div');
     body.className = 'kanban-column-body';
     
-    // Se não houver agendamentos, exibir mensagem
     if (appointments.length === 0) {
       const emptyMessage = document.createElement('div');
       emptyMessage.className = 'empty-message';
       emptyMessage.textContent = 'Nenhum agendamento';
       body.appendChild(emptyMessage);
     } else {
-      // Ordenar por data
       const sortedAppointments = [...appointments].sort((a, b) => 
         new Date(a.scheduledFor) - new Date(b.scheduledFor)
       );
       
-      // Adicionar cartões
       sortedAppointments.forEach(appointment => {
-        const card = createAppointmentCard(appointment, columnClass);
-        body.appendChild(card);
+        const card = createAppointmentCard(appointment, columnClass, customers);
+        if (card) body.appendChild(card);
       });
     }
     
-    // Montar coluna
     column.appendChild(header);
     column.appendChild(body);
     
@@ -151,16 +178,28 @@ const NotificationsModule = (() => {
   };
   
   // Cria um cartão de agendamento
-  const createAppointmentCard = (appointment, columnClass) => {
-    const db = window.mockDB;
-    const customer = db.customers.find(c => c.id === appointment.customerId);
-    
-    if (!customer) return null;
-    
-    // Calcular dias até o agendamento
+  const createAppointmentCard = (appointment, columnClass, customers) => {
+    // Normalize property names
+    const scheduledFor = appointment.scheduledFor || appointment.scheduledfor;
+    if (!scheduledFor) {
+      console.warn('createAppointmentCard: Missing or invalid scheduledFor in appointment:', appointment);
+      return null;
+    }
+
+    const customer = customers.find(c => String(c.id) === String(appointment.customerid));
+    if (!customer) {
+      console.warn('Cliente não encontrado para o agendamento:', appointment);
+      return null;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const appointmentDate = new Date(appointment.scheduledFor);
+    const appointmentDate = new Date(scheduledFor);
+    if (isNaN(appointmentDate.getTime())) {
+      console.warn('createAppointmentCard: Invalid date in scheduledFor:', scheduledFor);
+      return null;
+    }
+
     const timeDiff = appointmentDate.getTime() - today.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
     
@@ -174,7 +213,7 @@ const NotificationsModule = (() => {
     card.innerHTML = `
       <div class="kanban-card-title">${customer.name}</div>
       <div class="kanban-card-info">${customer.phone}</div>
-      <div class="kanban-card-date">${formatDate(appointment.scheduledFor)} ${
+      <div class="kanban-card-date">${formatDate(scheduledFor)} ${
         daysDiff < 0 ? `<span class="badge badge-danger">${Math.abs(daysDiff)} dias atrás</span>` : 
         daysDiff === 0 ? '<span class="badge badge-warning">Hoje</span>' : 
         `<span class="badge badge-${columnClass === 'upcoming' ? 'warning' : 'primary'}">${daysDiff} dias</span>`
@@ -193,7 +232,7 @@ const NotificationsModule = (() => {
       // Formatar número para WhatsApp (remover caracteres não numéricos)
       const whatsappNumber = customer.phone.replace(/\D/g, '');
       // Criar mensagem personalizada
-      const message = `Olá ${customer.name}, entramos em contato para confirmar seu agendamento em ${formatDate(appointment.scheduledFor)}. Podemos confirmar?`;
+      const message = `Olá ${customer.name}, entramos em contato para confirmar seu agendamento em ${formatDate(scheduledFor)}. Podemos confirmar?`;
       // Abrir WhatsApp
       window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`, '_blank');
     });
@@ -223,55 +262,79 @@ const NotificationsModule = (() => {
   };
   
   // Marca agendamentos de um cliente como "cliente não quer mais" (NEVER)
-  const markCustomerAsNever = (customerId) => {
-    const db = window.mockDB;
-    const pendingAppointments = db.appointments.filter(a => a.customerId === customerId && a.status === 'PENDING');
-    
+  const markCustomerAsNever = async (customerId) => {
+    let appointments = [];
+    try {
+      appointments = await API.getAppointments();
+    } catch (error) {
+      console.error('Erro ao buscar agendamentos:', error);
+      window.showToast('Erro ao carregar agendamentos', 'error');
+      return;
+    }
+
+    const pendingAppointments = appointments.filter(a => a.customerId === customerId && a.status === 'PENDING');
+
     if (pendingAppointments.length > 0) {
-      pendingAppointments.forEach(appointment => {
-        appointment.status = 'NEVER';
-      });
-      window.showToast('Cliente marcado como "não tem interesse"', 'warning');
-      renderKanbanBoard(); // Atualiza o quadro kanban
+      try {
+        for (const appointment of pendingAppointments) {
+          await API.updateAppointment(appointment.id, { ...appointment, status: 'NEVER' });
+        }
+        window.showToast('Cliente marcado como "não tem interesse"', 'warning');
+        renderKanbanBoard();
+      } catch (error) {
+        console.error('Erro ao atualizar agendamentos:', error);
+        window.showToast('Erro ao marcar cliente como "não tem interesse"', 'error');
+      }
     } else {
       window.showToast('Cliente não possui agendamentos pendentes', 'info');
     }
   };
   
   // Reagenda (Prorroga) contato para um cliente
-  const rescheduleCustomerAppointment = (customerId) => {
-    const db = window.mockDB;
-    const pendingAppointments = db.appointments.filter(a => a.customerId === customerId && a.status === 'PENDING');
-    
+  const rescheduleCustomerAppointment = async (customerId) => {
+    let appointments = [];
+    let customers = [];
+    try {
+      appointments = await API.getAppointments();
+      customers = await API.getCustomers();
+    } catch (error) {
+      console.error('Erro ao buscar dados da API:', error);
+      window.showToast('Erro ao carregar dados', 'error');
+      return;
+    }
+
+    const pendingAppointments = appointments.filter(a => a.customerId === customerId && a.status === 'PENDING');
+
     if (pendingAppointments.length === 0) {
-      // Se não há agendamentos pendentes, criar um novo
-      const customer = db.customers.find(c => c.id === customerId);
+      const customer = customers.find(c => c.id === customerId);
       if (!customer) return;
-      
-      // Modal para nova data
+
       showRescheduleModal(null, customerId);
     } else {
-      // Se há agendamentos pendentes, reagendar o primeiro
       showRescheduleModal(pendingAppointments[0].id);
     }
   };
   
   // Mostra modal para reagendar contato
-  const showRescheduleModal = (appointmentId, customerId = null) => {
-    const db = window.mockDB;
+  const showRescheduleModal = async (appointmentId, customerId = null) => {
     let appointment = null;
     let customer = null;
-    
-    if (appointmentId) {
-      appointment = db.appointments.find(a => a.id === appointmentId);
-      if (!appointment) return;
-      customer = db.customers.find(c => c.id === appointment.customerId);
-    } else if (customerId) {
-      customer = db.customers.find(c => c.id === customerId);
+
+    try {
+      if (appointmentId) {
+        appointment = await API.getAppointmentById(appointmentId);
+        customer = await API.getCustomerById(appointment.customerId);
+      } else if (customerId) {
+        customer = await API.getCustomerById(customerId);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados da API:', error);
+      window.showToast('Erro ao carregar dados', 'error');
+      return;
     }
-    
+
     if (!customer) return;
-    
+
     // Valores default para data/hora
     const now = new Date();
     const nextMonth = new Date();
@@ -330,7 +393,7 @@ const NotificationsModule = (() => {
       document.body.removeChild(modal);
     });
     
-    modal.querySelector('#saveBtn').addEventListener('click', () => {
+    modal.querySelector('#saveBtn').addEventListener('click', async () => {
       const newDate = modal.querySelector('#newDate').value;
       const newTime = modal.querySelector('#newTime').value || "09:00";
       const notes = modal.querySelector('#notes').value;
@@ -340,29 +403,29 @@ const NotificationsModule = (() => {
         return;
       }
       
-      if (appointment) {
-        // Atualizar agendamento existente
-        appointment.scheduledFor = `${newDate}T${newTime}`;
-        appointment.notes = notes;
-        window.showToast('Contato prorrogado com sucesso');
-      } else {
-        // Criar novo agendamento
-        const newAppointmentId = Math.max(...db.appointments.map(a => a.id)) + 1 || 1;
-        const newAppointment = {
-          id: newAppointmentId,
-          customerId: customerId,
-          scheduledFor: `${newDate}T${newTime}`,
-          createdFromServiceId: null,
-          status: 'PENDING',
-          notes: notes
-        };
-        
-        db.appointments.push(newAppointment);
-        window.showToast('Novo contato agendado com sucesso');
+      try {
+        if (appointment) {
+          await API.updateAppointment(appointment.id, {
+            ...appointment,
+            scheduledFor: `${newDate}T${newTime}`,
+            notes
+          });
+          window.showToast('Contato prorrogado com sucesso');
+        } else {
+          await API.createAppointment({
+            customerId: customerId,
+            scheduledFor: `${newDate}T${newTime}`,
+            status: 'PENDING',
+            notes
+          });
+          window.showToast('Novo contato agendado com sucesso');
+        }
+        renderKanbanBoard();
+        document.body.removeChild(modal);
+      } catch (error) {
+        console.error('Erro ao salvar agendamento:', error);
+        window.showToast('Erro ao salvar agendamento', 'error');
       }
-      
-      renderKanbanBoard(); // Atualiza o quadro kanban
-      document.body.removeChild(modal);
     });
     
     // Fechar ao clicar fora
