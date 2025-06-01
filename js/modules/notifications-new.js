@@ -240,22 +240,12 @@ const NotificationsModule = (() => {
     const viewBtn = card.querySelector('[data-action="view"]');
     viewBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Usar o componente reutilizável se disponível
-      if (window.ComponentsModule && typeof window.ComponentsModule.showCustomerDetailsModal === 'function') {
-        window.ComponentsModule.showCustomerDetailsModal(customer.id);
-      } else {
-        window.CustomersModule.showCustomerDetails(customer.id);
-      }
+      CustomerDetailsModal.show(customer.id);
     });
     
-    // Clicar no card também mostra detalhes do cliente
+    // Atualizar o evento de clique no card para chamar o modal reutilizável
     card.addEventListener('click', () => {
-      // Usar o componente reutilizável se disponível
-      if (window.ComponentsModule && typeof window.ComponentsModule.showCustomerDetailsModal === 'function') {
-        window.ComponentsModule.showCustomerDetailsModal(customer.id);
-      } else {
-        window.CustomersModule.showCustomerDetails(customer.id);
-      }
+      CustomerDetailsModal.show(customer.id);
     });
     
     return card;
@@ -551,6 +541,58 @@ const NotificationsModule = (() => {
     showRescheduleModal(appointmentId);
   };
   
+  // Carrega e exibe o modal reutilizável de detalhes do cliente
+  const loadCustomerDetailsModal = async (customerId, appointmentId) => {
+    console.log("modal");
+    const modalContainer = document.getElementById('customerDetailsModal');
+
+    if (!modalContainer) {
+      const response = await fetch('/components/modal-customer-details.html');
+      const modalHTML = await response.text();
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    const modal = document.getElementById('customerDetailsModal');
+    const closeModal = () => modal.remove();
+
+    modal.querySelector('#closeModalBtn').addEventListener('click', closeModal);
+    modal.querySelector('#closeModalFooterBtn').addEventListener('click', closeModal);
+
+    const customer = await API.getCustomerById(customerId);
+    const appointment = appointmentId ? await API.getAppointmentById(appointmentId) : null;
+
+    modal.querySelector('#modalCustomerName').textContent = customer.name;
+    modal.querySelector('#customerName').textContent = customer.name;
+    modal.querySelector('#appointmentDate').textContent = appointment ? formatDate(appointment.scheduledFor) : 'N/A';
+    modal.querySelector('#appointmentStatus').textContent = appointment ? appointment.status : 'N/A';
+    modal.querySelector('#appointmentNotes').textContent = appointment ? appointment.notes : 'N/A';
+
+    modal.querySelector('#scheduleBtn').addEventListener('click', async () => {
+      if (appointment) {
+        await API.updateAppointment(appointment.id, { ...appointment, status: 'SCHEDULED' });
+        window.showToast('Agendamento marcado como agendado');
+        closeModal();
+        renderKanbanBoard();
+      }
+    });
+
+    modal.querySelector('#rescheduleBtn').addEventListener('click', () => {
+      closeModal();
+      showRescheduleModal(appointmentId, customerId);
+    });
+
+    modal.querySelector('#neverBtn').addEventListener('click', async () => {
+      if (appointment) {
+        await API.updateAppointment(appointment.id, { ...appointment, status: 'NEVER' });
+        window.showToast('Cliente marcado como "não quer mais"');
+        closeModal();
+        renderKanbanBoard();
+      }
+    });
+
+    modal.style.display = 'block';
+  };
+
   // Expor métodos públicos
   return {
     init,
