@@ -59,38 +59,47 @@
   </div>
 </div>
 
-<script src="js/mockData.js"></script>
+<script src="js/modules/api.js"></script>
 <script src="js/modules/toast.js"></script>
 <script src="js/modules/customers-new.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   // Iniciar módulo
   window.CustomersModule.init();
-  
+
   // Cache de elementos DOM
   const clientTableBody = document.getElementById('clientTableBody');
   const searchInput = document.getElementById('clientSearch');
   const newClientBtn = document.getElementById('newClientBtn');
-  
-  // Função para renderizar a lista de clientes
-  function renderClientList(filterText = '') {
-    // Obter clientes filtrados
-    const clients = window.CustomersModule.searchCustomers(filterText);
-    
+
+  // Função para renderizar a lista de clientes (agora assíncrona)
+  async function renderClientList(filterText = '') {
+    // Obter clientes do backend
+    const allClients = await API.getCustomers();
+    console.log('Clientes obtidos do backend:', allClients);//nao esta imprimindo isso aqui
+    console.log(API);
+    // Filtrar clientes (se necessário)
+    const clients = window.CustomersModule.searchCustomers
+      ? window.CustomersModule.searchCustomers(filterText, allClients)
+      : allClients.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()));
+
     // Limpar tabela
     clientTableBody.innerHTML = '';
-    
+
+    // Obter todos os serviços do backend
+    const allServices = await API.getServices();
+
     // Preencher com clientes
     clients.forEach(client => {
       // Encontrar último serviço
-      const services = window.mockDB.services
+      const services = allServices
         .filter(s => s.customerId === client.id)
         .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
-      
-      const lastService = services.length ? 
-        new Date(services[0].serviceDate).toLocaleDateString('pt-BR') : 
+
+      const lastService = services.length ?
+        new Date(services[0].serviceDate).toLocaleDateString('pt-BR') :
         'Nenhum';
-      
+
       // Criar linha
       const tr = document.createElement('tr');
       
