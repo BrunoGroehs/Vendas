@@ -65,118 +65,23 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   // Iniciar módulo
-  window.CustomersModule.init();
-
-  // Cache de elementos DOM
-  const clientTableBody = document.getElementById('clientTableBody');
-  const searchInput = document.getElementById('clientSearch');
-  const newClientBtn = document.getElementById('newClientBtn');
-
-  // Função para renderizar a lista de clientes (agora assíncrona)
-  async function renderClientList(filterText = '') {
-    // Obter clientes do backend
-    const allClients = await API.getCustomers();
-    console.log('Clientes obtidos do backend:', allClients);//nao esta imprimindo isso aqui
-    console.log(API);
-    // Filtrar clientes (se necessário)
-    const clients = window.CustomersModule.searchCustomers
-      ? window.CustomersModule.searchCustomers(filterText, allClients)
-      : allClients.filter(c => c.name.toLowerCase().includes(filterText.toLowerCase()));
-
-    // Limpar tabela
-    clientTableBody.innerHTML = '';
-
-    // Obter todos os serviços do backend
-    const allServices = await API.getServices();
-
-    // Preencher com clientes
-    clients.forEach(client => {
-      // Encontrar último serviço
-      const services = allServices
-        .filter(s => s.customerId === client.id)
-        .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
-
-      const lastService = services.length ?
-        new Date(services[0].serviceDate).toLocaleDateString('pt-BR') :
-        'Nenhum';
-
-      // Criar linha
-      const tr = document.createElement('tr');
-      
-      // Nome
-      const tdName = document.createElement('td');
-      tdName.textContent = client.name;
-      
-      // Telefone
-      const tdPhone = document.createElement('td');
-      tdPhone.textContent = client.phone;
-      
-      // E-mail
-      const tdEmail = document.createElement('td');
-      tdEmail.textContent = client.email || '-';
-      
-      // Cidade
-      const tdCity = document.createElement('td');
-      tdCity.textContent = `${client.city}/${client.state}`;
-      
-      // Último serviço
-      const tdLastService = document.createElement('td');
-      tdLastService.textContent = lastService;
-      
-      // Ações
-      const tdActions = document.createElement('td');
-      tdActions.className = 'actions';
-      
-      const btnView = document.createElement('button');
-      btnView.textContent = 'Ver';
-      btnView.className = 'btn btn--small';
-      btnView.addEventListener('click', () => window.CustomersModule.showCustomerDetails(client.id));
-      
-      const btnEdit = document.createElement('button');
-      btnEdit.textContent = 'Editar';
-      btnEdit.className = 'btn btn--small';
-      btnEdit.addEventListener('click', () => {
-        window.CustomersModule.editCustomer(client.id);
-        renderClientList(searchInput.value);
-      });
-      
-      const btnAddService = document.createElement('button');
-      btnAddService.textContent = 'Venda';
-      btnAddService.className = 'btn btn--small btn--primary';
-      btnAddService.addEventListener('click', () => {
-        // Redirecionar para página de vendas
-        // Por enquanto, usamos o módulo de serviços diretamente
-        if (window.ServicesModule) {
-          window.ServicesModule.addNewService();
-          renderClientList(searchInput.value);
-        } else {
-          alert('Módulo de vendas não disponível nesta página.');
-        }
-      });
-      
-      tdActions.appendChild(btnView);
-      tdActions.appendChild(btnEdit);
-      tdActions.appendChild(btnAddService);
-      
-      // Adicionar células à linha
-      tr.append(tdName, tdPhone, tdEmail, tdCity, tdLastService, tdActions);
-      
-      // Adicionar linha à tabela
-      clientTableBody.appendChild(tr);
-    });
+  if (!window.CustomersModule.isInitialized) {
+    window.CustomersModule.init();
+    window.CustomersModule.isInitialized = true; // Garantir inicialização única
   }
-  
-  // Eventos
+
+  const searchInput = document.getElementById('clientSearch');
   searchInput.addEventListener('input', e => {
-    renderClientList(e.target.value);
+    window.CustomersModule.renderCustomersTable(e.target.value);
   });
-  
+
+  const newClientBtn = document.getElementById('newClientBtn');
   newClientBtn.addEventListener('click', () => {
-    window.CustomersModule.showAddCustomerModal();
+    // Certificar-se de que apenas um modal é aberto
+    if (!document.querySelector('.modal')) {
+      window.CustomersModule.showAddCustomerModal();
+    }
   });
-  
-  // Inicialização
-  renderClientList();
 });
 </script>
 

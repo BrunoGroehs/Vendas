@@ -1,11 +1,6 @@
 // app.js: main application entry point for dashboard
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Verificar dados mockados
-  if (!window.mockDB) {
-    console.error('Banco de dados mockado não encontrado!');
-    return;
-  }
   
   // Check if we're on a page with an "active" navigation item
   const currentPath = window.location.pathname;
@@ -23,15 +18,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });  // Initialize all modules
   if (window.ComponentsModule) console.log('Componentes inicializados');
   if (window.DashboardModule) window.DashboardModule.init();
-  if (window.CustomersModule) window.CustomersModule.init();
+  
+  // Inicializar módulos apenas uma vez
+  if (window.CustomersModule && !window.CustomersModule.isInitialized) {
+    window.CustomersModule.init();
+  }
+
   if (window.ServicesModule) window.ServicesModule.init();
   if (window.ExpensesModule) window.ExpensesModule.init();
   if (window.NotificationsModule) window.NotificationsModule.init();
-  
-  // Update notification badges
-  updateNotificationBadges();
-  // Check for notifications every minute
-  setInterval(updateNotificationBadges, 60000);
+
+  // Verificar se updateNotificationBadges está definido antes de chamar
+  if (typeof updateNotificationBadges === 'function') {
+    updateNotificationBadges();
+    // Check for notifications every minute
+    setInterval(updateNotificationBadges, 60000);
+  } else {
+    console.warn('updateNotificationBadges não está definido.');
+  }
   
   // Set up global search
   const searchInput = document.querySelector('.header__search');

@@ -11,25 +11,27 @@ const ComponentsModule = (() => {
   };
 
   // Função para mostrar detalhes do cliente em um modal
-  const showCustomerDetailsModal = (customerId, onClose = null) => {
-    const db = window.mockDB;
-    if (!db) return;
-    
-    const customer = db.customers.find(c => c.id === customerId);
+  const showCustomerDetailsModal = async (customerId, onClose = null) => {
+    // Obter cliente da API
+    const customer = await API.getCustomerById(customerId);
     if (!customer) return;
-    
-    // Filtrar serviços deste cliente
-    const customerServices = db.services.filter(s => s.customerId === customerId)
+
+    // Obter serviços do cliente da API
+    const allServices = await API.getServices();
+    const customerServices = allServices
+      .filter(s => s.customerId === customerId)
       .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
-      
-    // Filtrar próximos agendamentos
-    const customerAppointments = db.appointments.filter(a => a.customerId === customerId)
+
+    // Obter agendamentos do cliente da API
+    const allAppointments = await API.getAppointments();
+    const customerAppointments = allAppointments
+      .filter(a => a.customerId === customerId)
       .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor));
-    
+
     // Criar modal
     const modal = document.createElement('div');
     modal.className = 'modal';
-    
+
     // Conteúdo do modal
     modal.innerHTML = `
       <div class="modal__content">
