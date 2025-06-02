@@ -5,15 +5,29 @@
       <button class="modal__close" id="closeModalBtn">&times;</button>
     </div>
     <div class="modal__body">
-      <p><strong>Cliente:</strong> <span id="customerName">Nome do Cliente</span></p>
-      <p><strong>Agendado para:</strong> <span id="appointmentDate">Data do Agendamento</span></p>
-      <p><strong>Status:</strong> <span id="appointmentStatus">Status</span></p>
-      <p><strong>Observações:</strong> <span id="appointmentNotes">Observações</span></p>
+      <div class="modal__left">
+        <p><strong>Cliente:</strong> <span id="customerName">Nome do Cliente</span></p>
+        <p><strong>Agendado para:</strong> <span id="appointmentDate">Data do Agendamento</span></p>
+        <p><strong>Status:</strong> <span id="appointmentStatus">Status</span></p>
+        <p><strong>Observações:</strong> <span id="appointmentNotes">Observações</span></p>
+
+        <!-- Agendamentos Pendentes -->
+        <h3>Próximos Recontatos</h3>
+        <ul id="pendingAppointments" class="modal__list">Nenhum recontato pendente.</ul>
+      </div>
+
+      <div class="modal__right">
+        <!-- Histórico de Serviços -->
+        <h3>Histórico de Serviços</h3>
+        <ul id="serviceHistory" class="modal__list">Nenhum serviço encontrado.</ul>
+      </div>
     </div>
     <div class="modal__footer">
-      <button class="btn btn--primary" id="scheduleBtn">Marcar como Agendado</button>
-      <button class="btn" id="rescheduleBtn">Prorrogar Contato</button>
-      <button class="btn btn--danger" id="neverBtn">Cliente Não Quer Mais</button>
+      <button class="btn btn--primary" id="newServiceBtn">Registrar Novo Serviço</button>
+      <button class="btn btn--accent" id="contactClientBtn">Contatar Cliente</button>
+      <button class="btn" id="rescheduleBtn">Prorrogar Data do Recontato</button>
+      <button class="btn btn--danger" id="neverBtn">Cliente Não Tem Interesse</button>
+      <button class="btn" id="editClientBtn">Editar Cliente</button>
       <button class="btn" id="closeModalFooterBtn">Fechar</button>
     </div>
   </div>

@@ -39,7 +39,8 @@ const API = {
     body: JSON.stringify(data),
   }),
   deleteService: (id) => fetchAPI(`/services/${id}`, { method: 'DELETE' }),
-
+  getServicesByCustomerId: (customerId) => fetchAPI(`/services?customerId=${customerId}`),
+    
   // Appointments
   getAppointments: () => fetchAPI('/appointments'),
   getAppointmentById: (id) => fetchAPI(`/appointments/${id}`),
@@ -54,6 +55,7 @@ const API = {
     body: JSON.stringify(data),
   }),
   deleteAppointment: (id) => fetchAPI(`/appointments/${id}`, { method: 'DELETE' }),
+  getPendingAppointmentsByCustomerId: (customerId) => fetchAPI(`/appointments?customerId=${customerId}&status=PENDING`),
 
   // Expenses
   getExpenses: () => fetchAPI('/expenses'),

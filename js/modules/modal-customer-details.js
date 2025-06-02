@@ -1,5 +1,54 @@
 // Lógica para o modal de detalhes do cliente
 const CustomerDetailsModal = (() => {
+  // Buscar e exibir o histórico de serviços e agendamentos pendentes
+  const loadCustomerData = async (customerId) => {
+    const serviceHistoryList = document.getElementById('serviceHistory');
+    const pendingAppointmentsList = document.getElementById('pendingAppointments');
+
+    // Limpar listas
+    serviceHistoryList.innerHTML = '';
+    pendingAppointmentsList.innerHTML = '';
+
+    try {
+      // Buscar histórico de serviços
+      const services = await API.getServicesByCustomerId(customerId);
+      console.log('Serviços vinculados ao cliente:', services); // Log dos serviços do cliente
+      // Corrigir filtro para customerid (tudo minúsculo)
+      const filteredServices = services.filter(s => String(s.customerid) === String(customerId));
+      if (filteredServices.length > 0) {
+        filteredServices.forEach(service => {
+          const li = document.createElement('li');
+          const date = service.servicedate ? new Date(service.servicedate).toLocaleDateString('pt-BR') : 'Data não disponível';
+          li.textContent = `${date} - ${service.description || 'Descrição não disponível'}`;
+          serviceHistoryList.appendChild(li);
+        });
+      } else {
+        serviceHistoryList.textContent = 'Nenhum serviço encontrado.';
+      }
+
+      // Buscar agendamentos pendentes
+      const appointments = await API.getPendingAppointmentsByCustomerId(customerId);
+      if (appointments && appointments.length > 0) {
+        // Filtrar agendamentos realmente do cliente (defensivo)
+        const filteredAppointments = appointments.filter(a => a.customerId == customerId);
+        if (filteredAppointments.length > 0) {
+          filteredAppointments.forEach(appointment => {
+            const li = document.createElement('li');
+            const date = appointment.scheduledFor ? new Date(appointment.scheduledFor).toLocaleDateString('pt-BR') : 'Data não disponível';
+            li.textContent = `${date} - ${appointment.notes || 'Sem observações'}`;
+            pendingAppointmentsList.appendChild(li);
+          });
+        } else {
+          pendingAppointmentsList.textContent = 'Nenhum recontato pendente.';
+        }
+      } else {
+        pendingAppointmentsList.textContent = 'Nenhum recontato pendente.';
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do cliente:', error);
+    }
+  };
+
   // Função para carregar e exibir o modal
   const show = async (customerId) => {
     let modal = document.getElementById('customerDetailsModal');
@@ -14,6 +63,7 @@ const CustomerDetailsModal = (() => {
 
     // Buscar os dados do cliente
     const customer = await API.getCustomerById(customerId);
+    console.log('Dados do cliente:', customer); // Adicionado log dos dados do cliente
     if (!customer) {
       console.error('Cliente não encontrado:', customerId);
       return;
@@ -22,9 +72,30 @@ const CustomerDetailsModal = (() => {
     // Preencher os dados no modal
     modal.querySelector('#modalCustomerName').textContent = customer.name;
     modal.querySelector('#customerName').textContent = customer.name;
-    modal.querySelector('#appointmentDate').textContent = 'N/A'; // Exemplo, pode ser ajustado
-    modal.querySelector('#appointmentStatus').textContent = 'N/A';
-    modal.querySelector('#appointmentNotes').textContent = 'N/A';
+
+    // Carregar histórico de serviços e agendamentos pendentes
+    await loadCustomerData(customerId);
+
+    // Adicionar eventos aos botões
+    modal.querySelector('#newServiceBtn').addEventListener('click', () => {
+      console.log('Registrar Novo Serviço');
+    });
+
+    modal.querySelector('#contactClientBtn').addEventListener('click', () => {
+      console.log('Contatar Cliente');
+    });
+
+    modal.querySelector('#rescheduleBtn').addEventListener('click', () => {
+      console.log('Prorrogar Data do Recontato');
+    });
+
+    modal.querySelector('#neverBtn').addEventListener('click', () => {
+      console.log('Cliente Não Tem Interesse');
+    });
+
+    modal.querySelector('#editClientBtn').addEventListener('click', () => {
+      console.log('Editar Cliente');
+    });
 
     // Adicionar eventos de fechamento
     const closeModal = () => modal.style.display = 'none';
