@@ -19,7 +19,9 @@ const CustomerDetailsModal = (() => {
         filteredServices.forEach(service => {
           const li = document.createElement('li');
           const date = service.servicedate ? new Date(service.servicedate).toLocaleDateString('pt-BR') : 'Data não disponível';
-          li.textContent = `${date} - ${service.description || 'Descrição não disponível'}`;
+          const notes = service.notes || 'Sem observações';
+          const price = service.price ? `R$ ${Number(service.price).toFixed(2)}` : 'Preço não disponível';
+          li.textContent = `${date} - ${notes} - ${price}`;
           serviceHistoryList.appendChild(li);
         });
       } else {
@@ -29,18 +31,15 @@ const CustomerDetailsModal = (() => {
       // Buscar agendamentos pendentes
       const appointments = await API.getPendingAppointmentsByCustomerId(customerId);
       if (appointments && appointments.length > 0) {
-        // Filtrar agendamentos realmente do cliente (defensivo)
-        const filteredAppointments = appointments.filter(a => a.customerId == customerId);
-        if (filteredAppointments.length > 0) {
-          filteredAppointments.forEach(appointment => {
-            const li = document.createElement('li');
-            const date = appointment.scheduledFor ? new Date(appointment.scheduledFor).toLocaleDateString('pt-BR') : 'Data não disponível';
-            li.textContent = `${date} - ${appointment.notes || 'Sem observações'}`;
-            pendingAppointmentsList.appendChild(li);
-          });
-        } else {
-          pendingAppointmentsList.textContent = 'Nenhum recontato pendente.';
-        }
+        pendingAppointmentsList.innerHTML = '';
+        appointments.forEach(appointment => {
+          const li = document.createElement('li');
+          // Corrigir para aceitar tanto 'scheduledFor' quanto 'scheduledfor'
+          const dateRaw = appointment.scheduledFor || appointment.scheduledfor;
+          const date = dateRaw ? new Date(dateRaw).toLocaleDateString('pt-BR') : 'Data não disponível';
+          li.textContent = `${date} - ${appointment.notes || 'Sem observações'}`;
+          pendingAppointmentsList.appendChild(li);
+        });
       } else {
         pendingAppointmentsList.textContent = 'Nenhum recontato pendente.';
       }
@@ -67,11 +66,15 @@ const CustomerDetailsModal = (() => {
     if (!customer) {
       console.error('Cliente não encontrado:', customerId);
       return;
-    }
+    }''
 
     // Preencher os dados no modal
     modal.querySelector('#modalCustomerName').textContent = customer.name;
     modal.querySelector('#customerName').textContent = customer.name;
+    modal.querySelector('#customerAddress').textContent = customer.address || '-';
+    modal.querySelector('#customerCity').textContent = customer.city || '-';
+    modal.querySelector('#customerEmail').textContent = customer.email || '-';
+    modal.querySelector('#customerPhone').textContent = customer.phone || '-';
 
     // Carregar histórico de serviços e agendamentos pendentes
     await loadCustomerData(customerId);

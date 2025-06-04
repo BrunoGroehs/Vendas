@@ -113,10 +113,34 @@ app.delete('/api/services/:id', async (req, res) => {
   }
 });
 
+// Rota para buscar todos os serviços de um cliente específico
+app.get('/api/services/customer/:customerId', async (req, res) => {
+  try {
+    const { customerId } = req.params;
+    const result = await db.query('SELECT * FROM services WHERE customerid = $1', [customerId]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // CRUD para Appointments
 app.get('/api/appointments', async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM appointments');
+    const { customerId, status } = req.query;
+    let query = 'SELECT * FROM appointments';
+    let params = [];
+    if (customerId && status) {
+      query += ' WHERE customerid = $1 AND status = $2';
+      params = [customerId, status];
+    } else if (customerId) {
+      query += ' WHERE customerid = $1';
+      params = [customerId];
+    } else if (status) {
+      query += ' WHERE status = $1';
+      params = [status];
+    }
+    const result = await db.query(query, params);
     res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

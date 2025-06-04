@@ -39,7 +39,8 @@ const API = {
     body: JSON.stringify(data),
   }),
   deleteService: (id) => fetchAPI(`/services/${id}`, { method: 'DELETE' }),
-  getServicesByCustomerId: (customerId) => fetchAPI(`/services?customerId=${customerId}`),
+  // Buscar todos os serviços de um cliente específico
+  getServicesByCustomerId: (customerId) => fetchAPI(`/services/customer/${customerId}`),
     
   // Appointments
   getAppointments: () => fetchAPI('/appointments'),
