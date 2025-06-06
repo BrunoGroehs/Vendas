@@ -86,15 +86,20 @@
   </div>
 </div>
 
-<script src="js/mockData.js"></script>
 <script src="js/modules/toast.js"></script>
 <script src="js/modules/components.js"></script>
+<script src="js/modules/api.js"></script>
 <script src="js/modules/services-new.js"></script>
 <script src="js/modules/customers-new.js"></script>
 <script src="js/modules/notifications-new.js"></script>
 <script src="js/app.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  // Verificar se API está carregada
+  if (!window.API && window.ensureAPILoaded) {
+    await window.ensureAPILoaded();
+  }
+  
   // Iniciar módulo
   window.ServicesModule.init();
   
@@ -108,77 +113,122 @@ document.addEventListener('DOMContentLoaded', () => {
   const totalRevenueEl = document.getElementById('totalRevenue');
   const averageTicketEl = document.getElementById('averageTicket');
   const totalCommissionsEl = document.getElementById('totalCommissions');
-
   // Formatar moeda
-  const formatCurrency = value => `R$ ${value.toFixed(2)}`;
-  
-  // Função para calcular e exibir métricas
-  function renderMetrics() {
-    const services = window.mockDB.services;
-    const totalSales = services.length;
-    const totalRevenue = services.reduce((sum, s) => sum + s.price, 0);
-    const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
-    const totalCommissions = services.reduce((sum, s) => sum + (s.price * s.commissionPct / 100), 0);
-    
-    // Atualizar elementos
-    totalSalesEl.textContent = totalSales;
-    totalRevenueEl.textContent = formatCurrency(totalRevenue);
-    averageTicketEl.textContent = formatCurrency(averageTicket);
-    totalCommissionsEl.textContent = formatCurrency(totalCommissions);
+  const formatCurrency = value => {
+    // Garantir que value é um número
+    const numValue = Number(value) || 0;
+    return `R$ ${numValue.toFixed(2)}`;
+  };
+    // Função para calcular e exibir métricas
+  async function renderMetrics() {
+    try {
+      // Verificar se API está disponível
+      if (!window.API) {
+        console.error('API não está disponível');
+        window.showToast('Erro ao conectar com a API', 'error');
+        return;
+      }      // Buscar serviços da API
+      const services = await window.API.getServices() || [];
+      
+      const totalSales = services.length;
+      const totalRevenue = services.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+      const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+      const totalCommissions = services.reduce((sum, s) => {
+        const price = Number(s.price) || 0;
+        const commissionPct = Number(s.commissionPct) || 10;
+        return sum + (price * commissionPct / 100);
+      }, 0);
+      
+      // Atualizar elementos
+      totalSalesEl.textContent = totalSales;
+      totalRevenueEl.textContent = formatCurrency(totalRevenue);
+      averageTicketEl.textContent = formatCurrency(averageTicket);
+      totalCommissionsEl.textContent = formatCurrency(totalCommissions);
+    } catch (error) {
+      console.error('Erro ao carregar métricas:', error);
+      window.showToast('Erro ao carregar métricas', 'error');
+    }
   }
-  
-  // Função para renderizar a lista de vendas
-  function renderSalesList(searchText = '') {
-    // Filtrar vendas
-    const services = window.mockDB.services
-      .filter(service => {
-        if (!searchText) return true;
-        
-        // Busca pelo nome do cliente
-        const customer = window.mockDB.customers.find(c => c.id === service.customerId);
-        if (customer && customer.name.toLowerCase().includes(searchText.toLowerCase())) {
-          return true;
-        }
-        
-        // Busca pela data do serviço
-        if (service.serviceDate.includes(searchText)) {
-          return true;
-        }
-        
-        // Busca pelo valor
-        if (service.price.toString().includes(searchText)) {
-          return true;
-        }
-        
-        return false;
-      })
-      .sort((a, b) => new Date(b.serviceDate) - new Date(a.serviceDate));
-    
-    // Limpar tabela
-    salesTableBody.innerHTML = '';
-    
-    // Preencher com serviços
-    services.forEach(service => {
-      const customer = window.mockDB.customers.find(c => c.id === service.customerId);
+    // Função para renderizar a lista de vendas
+  async function renderSalesList(searchText = '') {
+    try {
+      // Verificar se API está disponível
+      if (!window.API) {
+        console.error('API não está disponível');
+        window.showToast('Erro ao conectar com a API', 'error');
+        return;
+      }      // Buscar serviços e clientes da API
+      const [services, customers, appointments] = await Promise.all([
+        window.API.getServices(),
+        window.API.getCustomers(),
+        window.API.getAppointments()
+      ]);
+        // Filtrar vendas
+      const filteredServices = services
+        .filter(service => {
+          if (!searchText) return true;
+          
+          // Busca pelo nome do cliente
+          const clientId = service.customerId || service.customerid;
+          const customer = customers.find(c => c.id === clientId);
+          if (customer && customer.name && customer.name.toLowerCase().includes(searchText.toLowerCase())) {
+            return true;
+          }
+          
+          // Busca pela data do serviço
+          const dateValue = service.serviceDate || service.servicedate;
+          if (dateValue && typeof dateValue === 'string' && dateValue.includes(searchText)) {
+            return true;
+          }
+          
+          // Busca pelo valor
+          const price = service.price;
+          if (price !== undefined && price !== null && String(price).includes(searchText)) {
+            return true;
+          }
+          
+          return false;        })
+        .sort((a, b) => {
+          // Considerar ambas as formas de armazenamento da data (serviceDate ou servicedate)
+          const dateA = a.serviceDate || a.servicedate || '1970-01-01';
+          const dateB = b.serviceDate || b.servicedate || '1970-01-01';
+          return new Date(dateB) - new Date(dateA);
+        });
       
-      // Encontrar próximo agendamento
-      const nextAppointment = window.mockDB.appointments
-        .filter(a => a.createdFromServiceId === service.id && a.status === 'PENDING')
-        .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))[0];
-      
-      // Calcular comissão
-      const commission = service.price * (service.commissionPct / 100);
+      // Limpar tabela
+      salesTableBody.innerHTML = '';      // Preencher com serviços
+      filteredServices.forEach(service => {
+        // A API pode retornar customerId ou customerid - vamos verificar ambos
+        const clientId = service.customerId || service.customerid;
+        
+        // Tentamos encontrar o cliente pelo id usando ambas as formas (case sensitive ou não)
+        const customer = customers.find(c => 
+          c.id === clientId || 
+          (typeof c.id === 'string' && typeof clientId === 'string' && c.id.toLowerCase() === clientId.toLowerCase()));
+        
+          // Encontrar próximo agendamento (garantindo que appointments é um array válido)
+        const nextAppointment = Array.isArray(appointments) ? appointments
+          .filter(a => a && a.createdFromServiceId === service.id && a.status === 'PENDING')
+          .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))[0] : null;// Calcular comissão (garantindo que price e commissionPct são números)
+      const price = Number(service.price) || 0;
+      const commissionPct = Number(service.commissionPct) || 10; // Usar 10% como padrão se não estiver definido
+      const commission = price * (commissionPct / 100);
       
       // Criar linha
-      const tr = document.createElement('tr');
-        // Data com horário
-      const tdDate = document.createElement('td');
-      const serviceDate = new Date(service.serviceDate);      // Verificar se a data tem informação de hora (formato com T)
-      if (service.serviceDate.includes('T')) {
-        tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} ${serviceDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+      const tr = document.createElement('tr');      // Data com horário
+      const tdDate = document.createElement('td');      // Verificar se a data existe
+      if (!service.serviceDate && !service.servicedate) {
+        tdDate.textContent = "Data não disponível";
       } else {
-        // Se não tiver horário específico, adicionar um horário padrão (09:00)
-        tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} 09:00`;
+        const dateValue = service.serviceDate || service.servicedate;
+        const serviceDate = new Date(dateValue);
+        // Verificar se a data tem informação de hora (formato com T)
+        if (dateValue.includes('T')) {
+          tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} ${serviceDate.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+        } else {
+          // Se não tiver horário específico, adicionar um horário padrão (09:00)
+          tdDate.textContent = `${serviceDate.toLocaleDateString('pt-BR')} 09:00`;
+        }
       }
       tdDate.classList.add('highlight-cell');      // Cliente
       const tdCustomer = document.createElement('td');
@@ -218,13 +268,20 @@ document.addEventListener('DOMContentLoaded', () => {
       // Adicionar linha à tabela
       salesTableBody.appendChild(tr);
     });
+    } catch (error) {
+      console.error('Erro ao carregar lista de vendas:', error);
+      window.showToast('Erro ao carregar lista de vendas', 'error');
+      
+      // Limpar tabela e mostrar mensagem de erro
+      salesTableBody.innerHTML = '<tr><td colspan="5" class="text-center">Erro ao carregar vendas. Tente novamente mais tarde.</td></tr>';
+    }
   }
-  
   // Eventos
   searchInput.addEventListener('input', e => {
     renderSalesList(e.target.value);
   });
-    newSaleBtn.addEventListener('click', () => {
+      newSaleBtn.addEventListener('click', () => {
+    console.log('Abrindo modal de Nova Venda...');
     window.ServicesModule.showNewServiceModal();
     renderMetrics();
     renderSalesList();
@@ -237,8 +294,29 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   // Inicialização
-  renderMetrics();
-  renderSalesList();
+  // Verificar se a API está disponível, e se não estiver, esperar até que esteja
+  const ensureAPILoaded = async () => {
+    if (!window.API) {
+      console.log('Aguardando a API ser carregada...');
+      // Esperar por até 5 segundos pela API
+      for (let i = 0; i < 10; i++) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (window.API) break;
+      }
+      
+      // Se ainda não temos API, mostrar um erro
+      if (!window.API) {
+        console.error('API não pôde ser carregada após várias tentativas');
+        window.showToast('Erro ao carregar API. Algumas funcionalidades podem estar limitadas.', 'error');
+      }
+    }
+    
+    // Iniciar a renderização dos dados
+    renderMetrics();
+    renderSalesList();
+  };
+  
+  ensureAPILoaded();
 });
 </script>
 </body>

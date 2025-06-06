@@ -15,18 +15,42 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       link.classList.remove('active');
     }
-  });  // Initialize all modules
-  if (window.ComponentsModule) console.log('Componentes inicializados');
-  if (window.DashboardModule) window.DashboardModule.init();
-  
-  // Inicializar módulos apenas uma vez
-  if (window.CustomersModule && !window.CustomersModule.isInitialized) {
-    window.CustomersModule.init();
-  }
+  });  // Função para garantir que a API está carregada
+  const ensureAPILoaded = async () => {
+    if (!window.API) {
+      console.log('Carregando API...');
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'js/modules/api.js';
+        script.onload = () => {
+          console.log('API carregada com sucesso');
+          resolve(window.API);
+        };
+        script.onerror = () => {
+          console.error('Falha ao carregar API');
+          resolve(null); // Resolva mesmo com erro, para não bloquear a inicialização
+        };
+        document.head.appendChild(script);
+      });
+    }
+    return window.API;
+  };
 
-  if (window.ServicesModule) window.ServicesModule.init();
-  if (window.ExpensesModule) window.ExpensesModule.init();
-  if (window.NotificationsModule) window.NotificationsModule.init();
+  // Inicializar módulos após carregar a API
+  ensureAPILoaded().then(() => {
+    // Initialize all modules
+    if (window.ComponentsModule) console.log('Componentes inicializados');
+    if (window.DashboardModule) window.DashboardModule.init();
+    
+    // Inicializar módulos apenas uma vez
+    if (window.CustomersModule && !window.CustomersModule.isInitialized) {
+      window.CustomersModule.init();
+    }
+  
+    if (window.ServicesModule) window.ServicesModule.init();
+    if (window.ExpensesModule) window.ExpensesModule.init();
+    if (window.NotificationsModule) window.NotificationsModule.init();
+  });
 
   // Verificar se updateNotificationBadges está definido antes de chamar
   if (typeof updateNotificationBadges === 'function') {

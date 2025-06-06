@@ -1,0 +1,21 @@
+<div class="modal__content">
+  <div class="modal__header">
+    <h2>Detalhes do Serviço</h2>
+    <button class="modal__close">&times;</button>
+  </div>
+  <div class="modal__body">
+    <div class="service-details">
+      <p><strong>Cliente:</strong> {{CUSTOMER_NAME}}</p>
+      <p><strong>Data:</strong> {{SERVICE_DATE}}</p>
+      <p><strong>Valor:</strong> R$ {{SERVICE_PRICE}}</p>
+      <p><strong>Funcionário:</strong> {{EMPLOYEE_NAME}}</p>
+      <p><strong>Comissão:</strong> R$ {{COMMISSION_VALUE}} ({{COMMISSION_PCT}}%)</p>
+      <p><strong>Observações:</strong> {{NOTES}}</p>
+      
+      {{RELATED_APPOINTMENT}}
+    </div>
+  </div>
+  <div class="modal__footer">
+    <button class="btn" id="closeModalBtn">Fechar</button>
+  </div>
+</div>
