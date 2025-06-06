@@ -68,10 +68,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // Dispatch search event for any module to listen
       const event = new CustomEvent('globalSearch', { detail: { query: e.target.value } });
       document.dispatchEvent(event);
-      
-      // If on dashboard page, update contacts
+        // If on dashboard page, update contacts
       if (filename === 'index.html' && window.DashboardModule) {
-        window.DashboardModule.renderContacts(e.target.value);
+        window.DashboardModule.renderContacts(e.target.value).catch(err => console.error('Erro ao filtrar contatos:', err));
       }
     });
     

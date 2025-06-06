@@ -1,0 +1,39 @@
+/* Estilos para fazer o wizard ocupar 100% do espaço */
+.wizard {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.modal__body {
+  display: flex;
+  flex-direction: column;
+  height: calc(80vh - 120px); /* Adjust height to fill modal while leaving room for header/footer */
+  overflow-y: auto;
+}
+
+.wizard__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.wizard__panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.wizard__panel.active {
+  flex: 1;
+  height: 100%;
+}
+
+.form-actions {
+  margin-top: auto;
+  padding-top: 1rem;
+}

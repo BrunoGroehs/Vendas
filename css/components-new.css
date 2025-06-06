@@ -204,7 +204,8 @@
   width: 90%;
   max-width: 680px;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   position: absolute;
   top: 50%;
@@ -235,10 +236,11 @@
 }
 
 .modal__body {
-  display: flex;
   flex-direction: row;
   align-items: flex-start;
   padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .modal__left {

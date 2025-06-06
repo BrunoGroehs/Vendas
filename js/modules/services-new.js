@@ -14,15 +14,30 @@ const ServicesModule = (() => {  // Garantir que temos acesso ao objeto API ou f
   if (window.mockDB && !window.API) {
     console.warn('AVISO: mockDB está presente, mas API não está disponível. A aplicação está configurada para usar API.');
   }
-  
   // Formatação de datas
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    // Verifica se a data tem informação de hora (formato com T)
-    if (dateStr.includes('T')) {
-      return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+    // Verificar se a data é válida
+    if (!dateStr) {
+      return "Data não disponível";
     }
-    return date.toLocaleDateString('pt-BR');
+    
+    const date = new Date(dateStr);
+    
+    // Verificar se a data é válida (NaN check)
+    if (isNaN(date.getTime())) {
+      return "Data inválida";
+    }
+    
+    try {
+      // Verifica se a data tem informação de hora (formato com T)
+      if (typeof dateStr === 'string' && dateStr.includes('T')) {
+        return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+      }
+      return date.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.error('Erro ao formatar data:', error, dateStr);
+      return "Erro ao formatar data";
+    }
   };
     // Carrega um template HTML de um arquivo
   const loadTemplate = async (templatePath) => {
@@ -449,15 +464,17 @@ const ServicesModule = (() => {  // Garantir que temos acesso ao objeto API ou f
             // Disparar evento para notificar que um serviço foi adicionado
             const event = new CustomEvent('serviceAdded', { detail: result });
             document.dispatchEvent(event);
-            
-            // Se estamos na página dashboard, atualizar
+              // Se estamos na página dashboard, atualizar
             if (typeof window.DashboardModule !== 'undefined') {
               window.DashboardModule.renderMetrics();
               window.DashboardModule.renderContacts();
             }
             
-            // Formatar data de próximo contato
-            let formattedAppointmentDate = formatDate(result.appointment.scheduledFor);
+            // Formatar data de próximo contato (com verificações adicionais)
+            let formattedAppointmentDate = "Data não definida";
+            if (result.appointment && result.appointment.scheduledFor) {
+              formattedAppointmentDate = formatDate(result.appointment.scheduledFor);
+            }
             
             showToast(`Venda registrada com sucesso. Próximo contato agendado para ${formattedAppointmentDate}`);
           } else {
