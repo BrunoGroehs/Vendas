@@ -56,7 +56,7 @@ const CustomersModule = (() => {
   
   // Renderiza tabela de clientes com filtro opcional
   const renderCustomersTable = async (filterText = '') => {
-    console.log('Renderizando tabela de clientes...'); // Log para depuração
+    console.log('Renderizando tabela de clientes...');
 
     if (!customerTable) return;
 
@@ -94,18 +94,17 @@ const CustomersModule = (() => {
       tr.innerHTML = `
         <td>${customer.name}</td>
         <td>${customer.phone}</td>
+        <td>${customer.email}</td>
         <td>${customer.city}/${customer.state}</td>
-        <td>${customer.lastService || 'Nenhum serviço'}</td>
-        <td>${customer.nextContact || 'Nenhum agendamento'}</td>
         <td>
           <button class="btn btn--small btn--details" data-customer-id="${customer.id}">Detalhes</button>
         </td>
       `;
 
-      // Evento de clique para o botão de detalhes
-      const detailsBtn = tr.querySelector('.btn--details');
-      detailsBtn.addEventListener('click', () => {
-        showCustomerDetails(customer.id);
+      // Adicionar evento de clique para botão de detalhes
+      const detailsButton = tr.querySelector('.btn--details');
+      detailsButton.addEventListener('click', () => {
+        showCustomerDetailsModal(customer.id);
       });
 
       customerTable.appendChild(tr);
