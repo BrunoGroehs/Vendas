@@ -80,9 +80,40 @@ const CustomerDetailsModal = (() => {
     await loadCustomerData(customerId);
 
     // Adicionar eventos aos botões
-    modal.querySelector('#newServiceBtn').addEventListener('click', () => {
+    modal.querySelector('#newServiceBtn').addEventListener('click', async () => {
       console.log('Registrar Novo Serviço');
+      await exibeModalNovoServico(customerId);
     });
+
+    const exibeModalNovoServico = async (customerId) => {
+      try {
+        // Carregar template HTML
+        let templateHtml = await loadTemplate('../../components/modal-new-service.html');
+        if (!templateHtml) {
+          throw new Error('Template não encontrado');
+        }
+        // Crie um container para o modal, se necessário
+        let modalContainer = document.getElementById('modalNewServiceContainer');
+        if (!modalContainer) {
+          modalContainer = document.createElement('div');
+          modalContainer.id = 'modalNewServiceContainer';
+          // Garante que o modal seja o último filho do body (acima dos outros modais)
+          document.body.appendChild(modalContainer);
+        }
+        modalContainer.innerHTML = templateHtml;
+        modalContainer.style.display = 'block'; // Exibe o modal/container
+        modalContainer.style.position = 'fixed';
+        modalContainer.style.top = '0';
+        modalContainer.style.left = '0';
+        modalContainer.style.width = '100vw';
+        modalContainer.style.height = '100vh';
+        modalContainer.style.background = 'rgba(0,0,0,0.5)';
+        modalContainer.style.zIndex = '9999'; // Garante que fique acima dos outros modais
+      } catch (error) {
+        console.error('Erro ao carregar o template do modal de novo serviço:', error);
+        return;
+      }
+    };
 
     modal.querySelector('#contactClientBtn').addEventListener('click', () => {
       console.log('Contatar Cliente');
@@ -112,6 +143,17 @@ const CustomerDetailsModal = (() => {
   // Expor a função show
   return { show };
 })();
+
+// Função utilitária para carregar um template HTML
+async function loadTemplate(path) {
+  try {
+    const response = await fetch(path);
+    if (!response.ok) return null;
+    return await response.text();
+  } catch (e) {
+    return null;
+  }
+}
 
 // Expor globalmente
 window.CustomerDetailsModal = CustomerDetailsModal;
