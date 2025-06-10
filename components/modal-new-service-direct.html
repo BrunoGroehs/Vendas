@@ -1,0 +1,60 @@
+<!-- Novo modal para cadastro de serviço já com cliente selecionado -->
+<div class="modal__content">
+  <div class="modal__header">
+    <h2>Novo Serviço</h2>
+    <button class="modal__close">&times;</button>
+  </div>
+  <div class="modal__body">
+    <div class="wizard">
+      <div class="wizard__steps">
+        <div class="wizard__step active" data-step="2">2. Serviço</div>
+        <div class="wizard__step" data-step="3">3. Confirmação</div>
+      </div>
+      <div class="wizard__content">
+        <!-- Step 2: Detalhes do serviço -->
+        <div class="wizard__panel active" data-panel="2">
+          <div class="form-group">
+            <label for="serviceDate">Data:</label>
+            <input type="date" id="serviceDate" class="form-input">
+          </div>
+          <div class="form-group">
+            <label for="scheduledTime">Horário agendado:</label>
+            <input type="time" id="scheduledTime" class="form-input" value="09:00">
+          </div>
+          <div class="form-group">
+            <label for="price">Valor (R$):</label>
+            <input type="number" id="price" class="form-input" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="employee">Funcionário responsável:</label>
+            <select id="employee" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label for="commissionPct">Comissão (%):</label>
+            <input type="number" id="commissionPct" class="form-input" min="0" max="100">
+          </div>
+          <div class="form-group">
+            <label for="notes">Observações:</label>
+            <textarea id="notes" class="form-textarea"></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="btn" id="cancelWizard">Cancelar</button>
+            <button class="btn btn--primary" id="nextToStep3">Próximo</button>
+          </div>
+        </div>
+        <!-- Step 3: Confirmação e agendamento -->
+        <div class="wizard__panel" data-panel="3">
+          <h3>Resumo do Serviço</h3>
+          <div id="serviceSummary" class="summary"></div>
+          <h3>Próximo Contato</h3>
+          <p>Um recontato será agendado automaticamente para 1 ano após este serviço.</p>
+          <div id="appointmentSummary" class="summary"></div>
+          <div class="form-actions">
+            <button class="btn" id="backToStep2">Voltar</button>
+            <button class="btn btn--primary" id="saveService">Finalizar e Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

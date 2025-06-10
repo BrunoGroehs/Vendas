@@ -88,7 +88,7 @@ const CustomerDetailsModal = (() => {
     const exibeModalNovoServico = async (customerId) => {
       try {
         // Carregar template HTML
-        let templateHtml = await loadTemplate('../../components/modal-new-service.html');
+        let templateHtml = await loadTemplate('../../components/modal-new-service-direct.html');
         if (!templateHtml) {
           throw new Error('Template não encontrado');
         }
@@ -109,6 +109,25 @@ const CustomerDetailsModal = (() => {
         modalContainer.style.height = '100vh';
         modalContainer.style.background = 'rgba(0,0,0,0.5)';
         modalContainer.style.zIndex = '9999'; // Garante que fique acima dos outros modais
+
+        // Função para fechar o modal
+        const closeNewServiceModal = () => {
+          modalContainer.style.display = 'none';
+          modalContainer.innerHTML = '';
+        };
+
+        // Fechar ao clicar no botão de fechar (X)
+        const closeBtn = modalContainer.querySelector('.modal__close');
+        if (closeBtn) closeBtn.addEventListener('click', closeNewServiceModal);
+
+        // Fechar ao clicar no botão Cancelar
+        const cancelBtn = modalContainer.querySelector('#cancelWizard');
+        if (cancelBtn) cancelBtn.addEventListener('click', closeNewServiceModal);
+
+        // Fechar ao clicar fora do conteúdo do modal
+        modalContainer.addEventListener('click', (e) => {
+          if (e.target === modalContainer) closeNewServiceModal();
+        });
       } catch (error) {
         console.error('Erro ao carregar o template do modal de novo serviço:', error);
         return;
